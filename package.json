@@ -1,0 +1,13 @@
+{
+  "name": "formpdf-monorepo",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm -r --parallel run dev",
+    "build": "pnpm --filter @formpdf/editor run build",
+    "test": "pnpm -r run test",
+    "typecheck": "pnpm -r run typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  }
+}

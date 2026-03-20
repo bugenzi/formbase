@@ -1,0 +1,78 @@
+{
+  "name": "@formpdf/editor",
+  "version": "0.1.0",
+  "description": "Embeddable PDF form field editor with AI detection — drop fields onto any PDF, export AcroForm-ready documents",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/formbase/formbase",
+    "directory": "packages/pdf-form-editor"
+  },
+  "homepage": "https://github.com/formbase/formbase#readme",
+  "keywords": [
+    "pdf",
+    "form",
+    "editor",
+    "react",
+    "acroform",
+    "pdf-lib",
+    "form-fields",
+    "signature",
+    "pdf-editor",
+    "coordinate-engine"
+  ],
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./styles.css": "./dist/index.css",
+    "./engine": {
+      "types": "./dist/engine/index.d.ts",
+      "import": "./dist/engine/index.js",
+      "require": "./dist/engine/index.cjs"
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "tsup"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "dependencies": {
+    "file-saver": "^2.0.5",
+    "immer": "^10.1.1",
+    "interactjs": "^1.10.27",
+    "nanoid": "^5.1.7",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^4.10.38",
+    "zustand": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/file-saver": "^2.0.7",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.7",
+    "tsup": "^8.3.0",
+    "typescript": "^5.6.0",
+    "vitest": "^4.1.0"
+  }
+}

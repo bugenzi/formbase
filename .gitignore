@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.vite/
+*.local
+.DS_Store
+.env
+apps/web/public/pdf.worker.min.mjs
