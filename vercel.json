@@ -3,7 +3,7 @@
   "buildCommand": "pnpm --filter @formpdf/editor build && pnpm --filter @formpdf/web build",
   "outputDirectory": "apps/web/dist",
   "installCommand": "pnpm install",
-  "framework": "vite",
+  "framework": null,
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ]
