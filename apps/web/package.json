@@ -8,8 +8,8 @@
     "postinstall": "cp node_modules/pdfjs-dist/build/pdf.worker.min.mjs public/"
   },
   "dependencies": {
-    "@clerk/react": "^6.1.0",
     "@formpdf/editor": "workspace:*",
+    "@vercel/analytics": "^2.0.1",
     "pdfjs-dist": "^4.10.38",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",

@@ -5,6 +5,8 @@ interface ToolbarProps {
   onScaleChange: (scale: number) => void
   onExportJson: () => void
   onExportPdf: () => void
+  onExportPdfMake?: () => void
+  onExportPdfMakeJson?: () => void
   onImportSchema?: () => void
   pdfLoaded: boolean
 }
@@ -53,7 +55,7 @@ const icons = {
   ),
 }
 
-export function Toolbar({ scale, onScaleChange, onExportJson, onExportPdf, onImportSchema, pdfLoaded }: ToolbarProps) {
+export function Toolbar({ scale, onScaleChange, onExportJson, onExportPdf, onExportPdfMake, onExportPdfMakeJson, onImportSchema, pdfLoaded }: ToolbarProps) {
   const { undo, redo, canUndo, canRedo, selectedId, deleteField } = useFieldStore()
 
   const zoomLevels = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0]
@@ -178,6 +180,28 @@ export function Toolbar({ scale, onScaleChange, onExportJson, onExportPdf, onImp
           {icons.download}
           <span>Export PDF</span>
         </button>
+        {onExportPdfMake && (
+          <button
+            className="pfe-toolbar__text-btn"
+            onClick={onExportPdfMake}
+            disabled={!pdfLoaded}
+            title="Export clean form template via pdfmake"
+          >
+            {icons.download}
+            <span>Template</span>
+          </button>
+        )}
+        {onExportPdfMakeJson && (
+          <button
+            className="pfe-toolbar__text-btn"
+            onClick={onExportPdfMakeJson}
+            disabled={!pdfLoaded}
+            title="Export pdfmake document definition as JSON"
+          >
+            {icons.download}
+            <span>pdfmake</span>
+          </button>
+        )}
       </div>
     </div>
   )

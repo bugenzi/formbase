@@ -1,11 +1,8 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
 import RootLayout from './routes/root'
-import AuthLayout from './routes/auth-layout'
 
 const Landing = lazy(() => import('./routes/landing'))
-const SignIn = lazy(() => import('./routes/sign-in'))
-const Dashboard = lazy(() => import('./routes/dashboard'))
 const Editor = lazy(() => import('./routes/editor'))
 
 function Loader() {
@@ -26,13 +23,6 @@ export const router = createBrowserRouter([
     element: <RootLayout />,
     children: [
       { index: true, element: <S><Landing /></S> },
-      { path: 'sign-in', element: <S><SignIn /></S> },
-      {
-        element: <AuthLayout />,
-        children: [
-          { path: 'dashboard', element: <S><Dashboard /></S> },
-        ],
-      },
       { path: 'editor', element: <S><Editor /></S> },
       { path: '*', element: <Navigate to="/" replace /> },
     ],

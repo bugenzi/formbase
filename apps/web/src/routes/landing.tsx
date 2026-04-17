@@ -1,54 +1,186 @@
-import { useState, useEffect, useRef } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useState, useEffect, useRef, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import '../styles/landing.css'
 
-/* ── useInView hook ── */
-function useInView(threshold = 0.15) {
+/* ── Single-pass syntax highlighter ── */
+const KEYWORDS = new Set([
+  'import','from','export','default','function','return','const','let',
+  'var','async','await','new','if','else','for','while','class','extends',
+])
+
+function tokenize(code: string): Array<{ text: string; type: string }> {
+  const tokens: Array<{ text: string; type: string }> = []
+  let i = 0
+
+  while (i < code.length) {
+    // Comments: //
+    if (code[i] === '/' && code[i + 1] === '/') {
+      const end = code.indexOf('\n', i)
+      const slice = end === -1 ? code.slice(i) : code.slice(i, end)
+      tokens.push({ text: slice, type: 'cmt' })
+      i += slice.length
+      continue
+    }
+
+    // Strings: ' " `
+    if (code[i] === "'" || code[i] === '"' || code[i] === '`') {
+      const quote = code[i]
+      let j = i + 1
+      while (j < code.length && code[j] !== quote) {
+        if (code[j] === '\\') j++ // skip escaped char
+        j++
+      }
+      tokens.push({ text: code.slice(i, j + 1), type: 'str' })
+      i = j + 1
+      continue
+    }
+
+    // JSX: < or </
+    if (code[i] === '<' && /[A-Za-z\/]/.test(code[i + 1] || '')) {
+      const isClosing = code[i + 1] === '/'
+      const start = isClosing ? i + 2 : i + 1
+      let j = start
+      while (j < code.length && /[\w.]/.test(code[j])) j++
+      const tagName = code.slice(start, j)
+      if (tagName.length > 0) {
+        tokens.push({ text: code.slice(i, start), type: 'pnc' })
+        const cls = tagName[0] === tagName[0].toUpperCase() ? 'cmp' : 'tag'
+        tokens.push({ text: tagName, type: cls })
+        i = j
+        continue
+      }
+    }
+
+    // Word (could be keyword, attribute, or plain)
+    if (/[a-zA-Z_$]/.test(code[i])) {
+      let j = i
+      while (j < code.length && /[\w$]/.test(code[j])) j++
+      const word = code.slice(i, j)
+      if (KEYWORDS.has(word)) {
+        tokens.push({ text: word, type: 'kw' })
+      } else if (j < code.length && code[j] === '=') {
+        tokens.push({ text: word, type: 'attr' })
+      } else {
+        tokens.push({ text: word, type: '' })
+      }
+      i = j
+      continue
+    }
+
+    // Numbers
+    if (/\d/.test(code[i])) {
+      let j = i
+      while (j < code.length && /[\d.]/.test(code[j])) j++
+      tokens.push({ text: code.slice(i, j), type: 'num' })
+      i = j
+      continue
+    }
+
+    // Everything else (whitespace, operators, punctuation)
+    tokens.push({ text: code[i], type: '' })
+    i++
+  }
+
+  return tokens
+}
+
+function SyntaxPre({ code }: { code: string }) {
+  const tokens = useMemo(() => tokenize(code), [code])
+  return (
+    <pre>
+      {tokens.map((t, i) =>
+        t.type ? <span key={i} className={`sh-${t.type}`}>{t.text}</span> : t.text
+      )}
+    </pre>
+  )
+}
+
+/* ── Intersection observer hook ── */
+function useInView(threshold = 0.12) {
   const ref = useRef<HTMLDivElement>(null)
   const [visible, setVisible] = useState(false)
-
   useEffect(() => {
     const el = ref.current
     if (!el) return
     const obs = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect() } },
+      ([e]) => { if (e.isIntersecting) { setVisible(true); obs.disconnect() } },
       { threshold },
     )
     obs.observe(el)
     return () => obs.disconnect()
   }, [threshold])
-
   return { ref, visible }
 }
 
-function Section({ children, className = '', id }: { children: React.ReactNode; className?: string; id?: string }) {
+function S({ children, className = '', id, delay = 0 }: { children: React.ReactNode; className?: string; id?: string; delay?: number }) {
   const { ref, visible } = useInView()
   return (
-    <div ref={ref} data-visible={visible} className={`lp-section ${className}`} id={id}>
+    <div
+      ref={ref}
+      className={`lp-reveal ${visible ? 'lp-reveal--in' : ''} ${className}`}
+      id={id}
+      style={{ transitionDelay: `${delay}ms` }}
+    >
       {children}
     </div>
   )
 }
 
+/* ── Typing animation for hero ── */
+function TypeWriter({ words, className }: { words: string[]; className?: string }) {
+  const [idx, setIdx] = useState(0)
+  const [text, setText] = useState('')
+  const [deleting, setDeleting] = useState(false)
+
+  useEffect(() => {
+    const word = words[idx]
+    const speed = deleting ? 40 : 80
+
+    if (!deleting && text === word) {
+      const t = setTimeout(() => setDeleting(true), 2200)
+      return () => clearTimeout(t)
+    }
+    if (deleting && text === '') {
+      setDeleting(false)
+      setIdx((idx + 1) % words.length)
+      return
+    }
+
+    const t = setTimeout(() => {
+      setText(deleting ? word.slice(0, text.length - 1) : word.slice(0, text.length + 1))
+    }, speed)
+    return () => clearTimeout(t)
+  }, [text, deleting, idx, words])
+
+  return <span className={className}>{text}<span className="lp-cursor" /></span>
+}
+
 /* ── Nav ── */
 function Nav() {
   const nav = useNavigate()
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    const h = () => setScrolled(window.scrollY > 20)
+    window.addEventListener('scroll', h, { passive: true })
+    return () => window.removeEventListener('scroll', h)
+  }, [])
+
   return (
-    <nav className="lp-nav">
+    <nav className={`lp-nav ${scrolled ? 'lp-nav--scrolled' : ''}`}>
       <div className="lp-nav__inner">
-        <Link className="lp-nav__logo" to="/">
-          <div className="lp-nav__logo-mark">F</div>
-          Formbase
-        </Link>
+        <a className="lp-nav__logo" href="/">
+          <span className="lp-nav__logo-icon">F</span>
+          <span className="lp-nav__logo-text">formbase</span>
+        </a>
         <div className="lp-nav__links">
-          <a className="lp-nav__link" href="#features">Features</a>
-          <a className="lp-nav__link" href="#api">API</a>
-          <a className="lp-nav__link" href="https://github.com/formbase/formbase" target="_blank" rel="noopener noreferrer">GitHub</a>
-          <button className="lp-nav__cta" onClick={() => nav('/editor')}>
-            Try Editor
-            <span aria-hidden="true">&rarr;</span>
-          </button>
+          <a href="#how-it-works">How it works</a>
+          <a href="#features">Features</a>
+          <a href="https://github.com/formbase/formbase" target="_blank" rel="noopener noreferrer">GitHub</a>
         </div>
+        <button className="lp-nav__cta" onClick={() => nav('/editor')}>
+          Open Editor
+        </button>
       </div>
     </nav>
   )
@@ -58,234 +190,401 @@ function Nav() {
 function Hero() {
   const nav = useNavigate()
   return (
-    <Section className="lp-hero">
-      <div className="lp-hero__badge">
-        <span className="lp-hero__badge-dot" />
-        Open Source &middot; MIT Licensed
-      </div>
-      <h1>
-        The PDF form editor<br />
-        <span>React deserved.</span>
-      </h1>
-      <p className="lp-hero__sub">
-        Drop fields onto any PDF. Export AcroForm-ready documents. Build
-        signing workflows with a composable, PDF-native React component.
-      </p>
-      <div className="lp-hero__actions">
-        <button className="lp-btn lp-btn--primary" onClick={() => nav('/editor')}>
-          Open Editor
-          <span aria-hidden="true">&rarr;</span>
-        </button>
-        <a className="lp-btn lp-btn--ghost" href="#get-started">Get Started</a>
+    <section className="lp-hero">
+      <div className="lp-hero__bg" aria-hidden="true">
+        <div className="lp-hero__orb lp-hero__orb--1" />
+        <div className="lp-hero__orb lp-hero__orb--2" />
+        <div className="lp-hero__grid-lines" />
       </div>
 
-      {/* CSS Editor Mockup */}
-      <div className="lp-hero__mockup">
-        <div className="lp-mockup__toolbar">
-          <span className="lp-mockup__dot lp-mockup__dot--r" />
-          <span className="lp-mockup__dot lp-mockup__dot--y" />
-          <span className="lp-mockup__dot lp-mockup__dot--g" />
-          <span className="lp-mockup__title">contract.pdf — Formbase Editor</span>
+      <S className="lp-hero__content">
+        <div className="lp-hero__pill">
+          <span className="lp-hero__pill-dot" />
+          Open Source &middot; MIT Licensed
         </div>
-        <div className="lp-mockup__body">
-          <div className="lp-mockup__sidebar">
-            <div className="lp-mockup__sidebar-label">Field Palette</div>
-            {[
-              { name: 'Text Input', color: '#e8793b' },
-              { name: 'Signature', color: '#7c68ee' },
-              { name: 'Date', color: '#3bb2e8' },
-              { name: 'Checkbox', color: '#5a9a63' },
-              { name: 'Dropdown', color: '#c586c0' },
-              { name: 'Initials', color: '#c8a62c' },
-            ].map(f => (
-              <div key={f.name} className="lp-mockup__field-item">
-                <span className="lp-mockup__field-dot" style={{ background: f.color }} />
-                {f.name}
-              </div>
-            ))}
-          </div>
-          <div className="lp-mockup__canvas">
-            <div className="lp-mockup__page">
-              <div className="lp-mockup__page-line" />
-              <div className="lp-mockup__page-line" />
-              <div className="lp-mockup__page-line" />
-              <div className="lp-mockup__placed-field">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="2" width="12" height="12" rx="2"/><line x1="5" y1="8" x2="11" y2="8"/></svg>
-                Full Name
-              </div>
-              <div className="lp-mockup__placed-field">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 12 C5 8 8 4 13 3"/></svg>
-                Signature
-              </div>
-            </div>
-          </div>
-          <div className="lp-mockup__inspector">
-            <div className="lp-mockup__inspector-title">Inspector</div>
-            {[
-              ['Type', 'text'], ['Label', 'Full Name'], ['Page', '1'],
-              ['X (pt)', '72.0'], ['Y (pt)', '680.5'], ['Width', '200'],
-              ['Height', '24'], ['Required', 'true'],
-            ].map(([k, v]) => (
-              <div key={k} className="lp-mockup__inspector-row">
-                <span>{k}</span><span>{v}</span>
-              </div>
-            ))}
-          </div>
+
+        <h1 className="lp-hero__title">
+          PDF forms for<br />
+          <TypeWriter
+            words={['leases', 'offer letters', 'invoices', 'contracts', 'intake forms']}
+            className="lp-hero__typed"
+          />
+        </h1>
+
+        <p className="lp-hero__sub">
+          Place fields on any PDF with a visual editor.<br />
+          Export filled PDFs and JSON schemas programmatically.
+        </p>
+
+        <div className="lp-hero__actions">
+          <button className="lp-btn lp-btn--primary" onClick={() => nav('/editor')}>
+            Try the Editor
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+          </button>
+          <a className="lp-btn lp-btn--glass" href="#how-it-works">See how it works</a>
         </div>
-      </div>
-    </Section>
+
+        <div className="lp-hero__install">
+          <code>npm install @formpdf/editor</code>
+          <button
+            className="lp-hero__copy"
+            onClick={() => navigator.clipboard.writeText('npm install @formpdf/editor')}
+            title="Copy"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="5" width="8" height="8" rx="1.5"/><path d="M3 11V3a1.5 1.5 0 011.5-1.5H11"/></svg>
+          </button>
+        </div>
+      </S>
+    </section>
   )
 }
 
-/* ── Problem / Solution ── */
-function Compare() {
+/* ── How it Works ── */
+function HowItWorks() {
   return (
-    <Section className="lp-compare">
-      <div className="lp-compare__header">
-        <h2>Stop fighting PDF coordinates</h2>
-        <p>PDF uses bottom-left origin. Browsers use top-left. Formbase handles the Y-flip so you never have to.</p>
+    <section className="lp-flow" id="how-it-works">
+      <S><h2 className="lp-section-title">Design once. Fill forever.</h2></S>
+      <S delay={80}><p className="lp-section-sub">From PDF template to programmatic document generation.</p></S>
+
+      <div className="lp-flow__steps">
+        {/* Step 1: Export programmatically — THIS WORKS TODAY */}
+        <S delay={0} className="lp-flow__step">
+          <div className="lp-flow__num">1</div>
+          <div className="lp-flow__step-body">
+            <h3>Export JSON schema & filled PDFs</h3>
+            <p>Use our npm package to export field schemas as JSON or inject AcroForm fields into your PDF. Works in React — two function calls.</p>
+            <div className="lp-flow__code">
+<SyntaxPre code={`import { useFormExport } from '@formpdf/editor'
+
+const { exportJSON, exportToPdf } = useFormExport()
+
+// JSON schema with all field positions
+const schema = exportJSON()
+
+// PDF with AcroForm fields baked in
+const pdfBytes = await exportToPdf(originalFile)`} />
+            </div>
+          </div>
+        </S>
+
+        <div className="lp-flow__connector" aria-hidden="true">
+          <svg width="2" height="60" viewBox="0 0 2 60"><line x1="1" y1="0" x2="1" y2="60" stroke="var(--c-border)" strokeWidth="2" strokeDasharray="4 4"/></svg>
+        </div>
+
+        {/* Step 2: Visual editor — THIS WORKS TODAY */}
+        <S delay={120} className="lp-flow__step">
+          <div className="lp-flow__num">2</div>
+          <div className="lp-flow__step-body">
+            <h3>Place fields with the visual editor</h3>
+            <p>Open any PDF. Drag text, signature, date, checkbox, dropdown, or initials fields exactly where they belong. Keyboard shortcuts, undo/redo, alignment guides.</p>
+            <div className="lp-flow__code">
+<SyntaxPre code={`import { PdfFormEditor } from '@formpdf/editor'
+import '@formpdf/editor/styles.css'
+
+<PdfFormEditor
+  pdfUrl="/contract.pdf"
+  onSave={(bytes) => upload(bytes)}
+/>`} />
+            </div>
+          </div>
+        </S>
+
+        <div className="lp-flow__connector" aria-hidden="true">
+          <svg width="2" height="60" viewBox="0 0 2 60"><line x1="1" y1="0" x2="1" y2="60" stroke="var(--c-border)" strokeWidth="2" strokeDasharray="4 4"/></svg>
+        </div>
+
+        {/* Step 3: Coming soon — AI + Headless SDK */}
+        <S delay={240} className="lp-flow__step">
+          <div className="lp-flow__num lp-flow__num--soon">3</div>
+          <div className="lp-flow__step-body">
+            <h3>AI detection & headless fill <span className="lp-badge-soon">Coming Soon</span></h3>
+            <p>Auto-detect fields with AI vision. Fill PDFs programmatically from any backend — no browser needed.</p>
+            <div className="lp-flow__code lp-flow__code--muted">
+<SyntaxPre code={`// @formbase/sdk — coming soon
+import { fillPdf } from '@formbase/sdk'
+
+const pdf = await fillPdf({
+  pdf: './lease-template.pdf',
+  schema: './lease-schema.json',
+  values: {
+    tenant_name: 'Sarah Connor',
+    monthly_rent: '$2,400',
+  }
+})`} />
+            </div>
+          </div>
+        </S>
       </div>
-      <div className="lp-compare__grid">
-        <div className="lp-compare__col lp-compare__col--before">
-          <div className="lp-compare__col-head">Without Formbase</div>
-          <div className="lp-compare__code">
-            <pre>{`// Manual PDF coordinate math
-const screenY = (pageHeight - pdfY - fieldH)
-                * (canvas.height / pageHeight)
-                * window.devicePixelRatio;
+    </section>
+  )
+}
 
-// Reverse on every drag event
-const pdfY = pageHeight
-             - (screenY / scale / dpr)
-             - fieldH;
-
-// Handle each field type manually
-// Parse AcroForm dictionaries
-// Manage undo/redo state
-// Wire up keyboard shortcuts
-// ...hundreds more lines`}</pre>
+/* ── Editor Mockup ── */
+function EditorPreview() {
+  const nav = useNavigate()
+  return (
+    <section className="lp-preview">
+      <S>
+        <div className="lp-preview__window">
+          <div className="lp-preview__chrome">
+            <span className="lp-preview__dot" style={{ background: '#ff5f57' }} />
+            <span className="lp-preview__dot" style={{ background: '#febc2e' }} />
+            <span className="lp-preview__dot" style={{ background: '#28c840' }} />
+            <span className="lp-preview__tab">contract.pdf — Formbase</span>
+          </div>
+          <div className="lp-preview__body">
+            <div className="lp-preview__sidebar">
+              <div className="lp-preview__sidebar-h">Fields</div>
+              {[
+                { name: 'Text', color: '#e8793b' },
+                { name: 'Signature', color: '#7c68ee' },
+                { name: 'Date', color: '#3bb2e8' },
+                { name: 'Checkbox', color: '#5a9a63' },
+                { name: 'Dropdown', color: '#c586c0' },
+                { name: 'Initials', color: '#c8a62c' },
+              ].map(f => (
+                <div key={f.name} className="lp-preview__field-row">
+                  <span className="lp-preview__field-chip" style={{ background: f.color }} />
+                  {f.name}
+                </div>
+              ))}
+            </div>
+            <div className="lp-preview__canvas">
+              <div className="lp-preview__page">
+                <div className="lp-preview__line" style={{ width: '72%' }} />
+                <div className="lp-preview__line" style={{ width: '88%' }} />
+                <div className="lp-preview__line" style={{ width: '54%' }} />
+                <div className="lp-preview__placed" data-type="text">
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="2" width="12" height="12" rx="2"/><line x1="5" y1="8" x2="11" y2="8"/></svg>
+                  Full Name
+                </div>
+                <div className="lp-preview__line" style={{ width: '90%' }} />
+                <div className="lp-preview__line" style={{ width: '60%' }} />
+                <div className="lp-preview__placed" data-type="sig">
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 12C5 8 8 4 13 3"/></svg>
+                  Signature
+                </div>
+                <div className="lp-preview__line" style={{ width: '45%' }} />
+              </div>
+            </div>
+            <div className="lp-preview__inspector">
+              <div className="lp-preview__sidebar-h">Inspector</div>
+              {[
+                ['Type', 'text'],
+                ['Label', 'Full Name'],
+                ['Page', '1'],
+                ['X', '72.0 pt'],
+                ['Y', '680.5 pt'],
+                ['Required', 'true'],
+              ].map(([k, v]) => (
+                <div key={k} className="lp-preview__prop">
+                  <span>{k}</span><span>{v}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-        <div className="lp-compare__col lp-compare__col--after">
-          <div className="lp-compare__col-head">With Formbase</div>
-          <div className="lp-compare__code">
-            <pre><span className="syn-kw">import</span> {'{'} <span className="syn-cmp">PdfFormEditor</span> {'}'} <span className="syn-kw">from</span> <span className="syn-str">'@formpdf/editor'</span>{'\n'}<span className="syn-kw">import</span> <span className="syn-str">'@formpdf/editor/styles.css'</span>{'\n\n'}<span className="syn-kw">function</span> <span className="syn-fn">App</span>() {'{\n'}{`  `}<span className="syn-kw">return</span> ({'\n'}{`    `}<span className="syn-pnc">&lt;</span><span className="syn-cmp">PdfFormEditor</span>{'\n'}{`      `}<span className="syn-attr">pdfUrl</span><span className="syn-pnc">=</span><span className="syn-str">"/contract.pdf"</span>{'\n'}{`      `}<span className="syn-attr">aiProxyUrl</span><span className="syn-pnc">=</span><span className="syn-str">"/api/detect"</span>{'\n'}{`    `}<span className="syn-pnc">/&gt;</span>{'\n'}{`  `}){'\n'}{'}'}</pre>
-          </div>
-        </div>
-      </div>
-    </Section>
+      </S>
+      <S delay={100}>
+        <button className="lp-btn lp-btn--primary lp-preview__cta" onClick={() => nav('/editor')}>
+          Open the real editor
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+        </button>
+      </S>
+    </section>
   )
 }
 
 /* ── Features ── */
 const FEATURES = [
-  { icon: 'fields', emoji: 'Aa', title: '6 Field Types', desc: 'Text, signature, initials, date, checkbox, and dropdown — each with PDF-native sizing defaults.' },
-  { icon: 'ai', emoji: 'AI', title: 'AI Field Detection', desc: 'Send page images to your AI proxy. Auto-detect where fields belong and what type they are.' },
-  { icon: 'compose', emoji: '{}', title: 'Composable API', desc: 'Use the full editor or import individual pieces: CoordEngine, stores, field components.' },
-  { icon: 'export', emoji: 'PDF', title: 'AcroForm Export', desc: 'Export to real PDF form fields via pdf-lib. Text fields, checkboxes, dropdowns — all AcroForm compliant.' },
-  { icon: 'coords', emoji: 'Y', title: 'PDF-Native Coords', desc: 'Fields stored in PDF points (bottom-left origin). CoordEngine handles the Y-flip transparently.' },
-  { icon: 'keyboard', emoji: 'KB', title: 'Keyboard-First', desc: 'T/S/D/C to add fields. Ctrl+Z undo. Ctrl+D duplicate. Delete to remove. Escape to deselect.' },
+  {
+    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="13" y2="14"/></svg>,
+    title: '6 Field Types',
+    desc: 'Text, signature, initials, date, checkbox, and dropdown. Each with PDF-native sizing defaults.',
+    color: '#e8793b',
+  },
+  {
+    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M14 3v4a1 1 0 001 1h4"/><path d="M17 21H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>,
+    title: 'AcroForm Export',
+    desc: 'Export real fillable PDF form fields. Text inputs, checkboxes, dropdowns — all AcroForm compliant.',
+    color: '#5a9a63',
+  },
+  {
+    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M8 3v18M16 3v18M3 8h18M3 16h18"/></svg>,
+    title: 'PDF-Native Coords',
+    desc: 'Fields stored in PDF points. CoordEngine handles Y-flip between PDF and screen space transparently.',
+    color: '#3bb2e8',
+  },
+  {
+    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polyline points="11 7 6 12 11 17"/><polyline points="17 7 12 12 17 17"/></svg>,
+    title: 'Composable API',
+    desc: 'Use the full editor or import pieces: CoordEngine, field store, individual components. Your layout, your rules.',
+    color: '#c586c0',
+  },
+  {
+    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>,
+    title: 'Zero Lock-in',
+    desc: 'MIT licensed. No API keys required. No server dependency. Works fully offline. Fork it, extend it, ship it.',
+    color: '#c8a62c',
+  },
+  {
+    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 3"/></svg>,
+    title: 'AI Field Detection',
+    desc: 'Point Claude at a page image. Fields auto-detected with type, position, and label.',
+    color: '#7c68ee',
+    soon: true,
+  },
 ]
 
 function Features() {
   return (
-    <Section className="lp-features" id="features">
-      <div className="lp-features__header">
-        <h2>Everything you need</h2>
-        <p>A complete toolkit for building PDF form workflows in React.</p>
-      </div>
+    <section className="lp-features" id="features">
+      <S><h2 className="lp-section-title">Built for developers</h2></S>
+      <S delay={80}><p className="lp-section-sub">Everything you need to build PDF form workflows in React.</p></S>
       <div className="lp-features__grid">
-        {FEATURES.map(f => (
-          <div key={f.title} className="lp-feature-card">
-            <div className={`lp-feature-card__icon lp-feature-card__icon--${f.icon}`}>{f.emoji}</div>
-            <h3>{f.title}</h3>
+        {FEATURES.map((f, i) => (
+          <S key={f.title} delay={i * 60} className="lp-features__card">
+            <div className="lp-features__icon" style={{ color: f.color, background: `${f.color}12` }}>
+              {f.icon}
+            </div>
+            <h3>{f.title} {'soon' in f && (f as any).soon && <span className="lp-badge-soon">Soon</span>}</h3>
             <p>{f.desc}</p>
-          </div>
+          </S>
         ))}
       </div>
-    </Section>
+    </section>
   )
 }
 
 /* ── Code Tabs ── */
-const CODE_EXAMPLES = [
-  { label: 'Full Editor', code: `import { PdfFormEditor } from '@formpdf/editor'\nimport '@formpdf/editor/styles.css'\n\nexport default function App() {\n  return (\n    <PdfFormEditor\n      pdfUrl="/contract.pdf"\n      aiProxyUrl="/api/pdf-detect"\n      onSave={(bytes) => upload(bytes)}\n    />\n  )\n}` },
-  { label: 'Custom Layout', code: `import { EditorProvider, PdfCanvas, FieldLayer }\n  from '@formpdf/editor'\n\n// Build your own layout\nfunction CustomEditor() {\n  return (\n    <EditorProvider aiProxyUrl="/api/detect">\n      <YourToolbar />\n      <PdfCanvas pdfFile={file} scale={zoom}>\n        {(pageIdx) => <FieldLayer pageIdx={pageIdx} />}\n      </PdfCanvas>\n      <YourPropsPanel />\n    </EditorProvider>\n  )\n}` },
-  { label: 'Headless Export', code: `import { useFormExport } from '@formpdf/editor'\n\nfunction SaveButton() {\n  const { exportJSON, exportToPdf } = useFormExport()\n\n  async function handleSave() {\n    const schema = exportJSON()\n    const pdfBytes = await exportToPdf(originalFile)\n    await fetch('/api/save', {\n      method: 'POST',\n      body: pdfBytes,\n    })\n  }\n\n  return <button onClick={handleSave}>Save</button>\n}` },
+const TABS = [
+  {
+    label: 'Export Schema',
+    code: `import { useFormExport } from '@formpdf/editor'
+
+function ExportButtons({ originalFile }) {
+  const { exportJSON, downloadPdf } = useFormExport()
+
+  return (
+    <>
+      <button onClick={() => {
+        const schema = exportJSON()
+        // → { version: "2.0", pages, fields }
+        saveToServer(schema)
+      }}>
+        Export JSON Schema
+      </button>
+      <button onClick={() => downloadPdf(originalFile)}>
+        Export Filled PDF
+      </button>
+    </>
+  )
+}`,
+  },
+  {
+    label: 'Full Editor',
+    code: `import { PdfFormEditor } from '@formpdf/editor'
+import '@formpdf/editor/styles.css'
+
+export default function App() {
+  return (
+    <PdfFormEditor
+      pdfUrl="/contract.pdf"
+      onSave={(bytes) => upload(bytes)}
+    />
+  )
+}`,
+  },
+  {
+    label: 'Custom Layout',
+    code: `import {
+  EditorProvider, PdfCanvas, FieldLayer
+} from '@formpdf/editor'
+
+function CustomEditor({ file, zoom }) {
+  return (
+    <EditorProvider>
+      <YourToolbar />
+      <PdfCanvas pdfFile={file} scale={zoom}>
+        {(pageIdx) => <FieldLayer pageIdx={pageIdx} />}
+      </PdfCanvas>
+      <YourInspector />
+    </EditorProvider>
+  )
+}`,
+  },
+  {
+    label: 'Headless Fill (Soon)',
+    code: `// Coming soon — @formbase/sdk
+import { fillPdf } from '@formbase/sdk'
+
+// Runs on Node, Bun, Deno, Lambda — anywhere
+const completed = await fillPdf({
+  pdf: readFileSync('./lease-template.pdf'),
+  schema: readFileSync('./lease-schema.json'),
+  values: {
+    tenant_name: 'Sarah Connor',
+    monthly_rent: '$2,400',
+    start_date: 'July 1, 2026',
+  }
+})
+
+writeFileSync('lease-filled.pdf', completed)`,
+  },
 ]
 
-function CodeTabs() {
+function CodeSection() {
   const [active, setActive] = useState(0)
-  return (
-    <Section className="lp-code-section" id="api">
-      <div className="lp-code-section__header">
-        <h2>Use it your way</h2>
-        <p>Drop in the full editor, compose your own layout, or go headless.</p>
-      </div>
-      <div className="lp-code-tabs">
-        {CODE_EXAMPLES.map((ex, i) => (
-          <button key={ex.label} className={`lp-code-tab ${i === active ? 'lp-code-tab--active' : ''}`} onClick={() => setActive(i)}>
-            {ex.label}
-          </button>
-        ))}
-      </div>
-      <div className="lp-code-block">
-        <pre>{CODE_EXAMPLES[active].code}</pre>
-      </div>
-    </Section>
-  )
-}
 
-/* ── Architecture ── */
-function Architecture() {
   return (
-    <Section className="lp-arch">
-      <div className="lp-arch__header">
-        <h2>PDF-native by design</h2>
-        <p>Fields are stored in PDF user-space points. The CoordEngine handles all coordinate transforms.</p>
-      </div>
-      <div className="lp-arch__flow">
-        <div className="lp-arch__node lp-arch__node--pdf"><div className="lp-arch__node-label">PDF Points</div><div className="lp-arch__node-code">origin: bottom-left<br />unit: 1/72 inch</div></div>
-        <div className="lp-arch__arrow">&rarr;</div>
-        <div className="lp-arch__node lp-arch__node--engine"><div className="lp-arch__node-label">CoordEngine</div><div className="lp-arch__node-code">Y-flip + scale<br />per-page transform</div></div>
-        <div className="lp-arch__arrow">&rarr;</div>
-        <div className="lp-arch__node lp-arch__node--screen"><div className="lp-arch__node-label">Screen Pixels</div><div className="lp-arch__node-code">origin: top-left<br />CSS pixels</div></div>
-      </div>
-      <div className="lp-arch__formula">
-        <code>screenY = (pageHeightPt - ptY - ptH) * scaleY</code>
-      </div>
-    </Section>
-  )
-}
-
-/* ── Steps ── */
-function Steps() {
-  return (
-    <Section className="lp-steps" id="get-started">
-      <div className="lp-steps__header"><h2>Up and running in 3 steps</h2></div>
-      <div className="lp-steps__grid">
-        <div className="lp-step"><div className="lp-step__num">1</div><h3>Install</h3><p>Add the package to your React project.</p><div className="lp-step__code"><pre>npm install @formpdf/editor</pre></div></div>
-        <div className="lp-step"><div className="lp-step__num">2</div><h3>Import</h3><p>Add the editor component and stylesheet.</p><div className="lp-step__code"><pre>{`import { PdfFormEditor }\n  from '@formpdf/editor'\nimport '@formpdf/editor/styles.css'`}</pre></div></div>
-        <div className="lp-step"><div className="lp-step__num">3</div><h3>Export</h3><p>Get a JSON schema or an AcroForm PDF.</p><div className="lp-step__code"><pre>{`const schema = exportJSON()\nconst pdf = await exportToPdf(file)`}</pre></div></div>
-      </div>
-    </Section>
+    <section className="lp-code" id="api">
+      <S><h2 className="lp-section-title">Use it your way</h2></S>
+      <S delay={80}><p className="lp-section-sub">Export schemas, drop in the full editor, compose your own layout, or go fully headless.</p></S>
+      <S delay={160}>
+        <div className="lp-code__window">
+          <div className="lp-code__tabs">
+            {TABS.map((t, i) => (
+              <button
+                key={t.label}
+                className={`lp-code__tab ${i === active ? 'lp-code__tab--active' : ''}`}
+                onClick={() => setActive(i)}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <div className="lp-code__body">
+            <SyntaxPre code={TABS[active].code} />
+          </div>
+        </div>
+      </S>
+    </section>
   )
 }
 
 /* ── CTA ── */
-function CtaSection() {
+function Cta() {
   const nav = useNavigate()
   return (
-    <Section className="lp-cta">
-      <div className="lp-cta__box">
-        <h2>MIT Licensed. Free Forever.</h2>
-        <p>Build PDF form workflows without vendor lock-in. Contribute, extend, and ship with confidence.</p>
-        <div className="lp-cta__actions">
-          <button className="lp-btn lp-btn--white" onClick={() => nav('/editor')}>Try the Editor <span aria-hidden="true">&rarr;</span></button>
-          <a className="lp-btn lp-btn--outline" href="https://github.com/formbase/formbase" target="_blank" rel="noopener noreferrer">View on GitHub</a>
+    <section className="lp-cta">
+      <S>
+        <div className="lp-cta__box">
+          <div className="lp-cta__glow" aria-hidden="true" />
+          <h2>MIT Licensed. Free forever.</h2>
+          <p>Build PDF form workflows without vendor lock-in. Star us on GitHub, open an issue, or just start building.</p>
+          <div className="lp-cta__actions">
+            <button className="lp-btn lp-btn--white" onClick={() => nav('/editor')}>
+              Open Editor
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+            </button>
+            <a className="lp-btn lp-btn--outline" href="https://github.com/formbase/formbase" target="_blank" rel="noopener noreferrer">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+              Star on GitHub
+            </a>
+          </div>
         </div>
-      </div>
-    </Section>
+      </S>
+    </section>
   )
 }
 
@@ -293,27 +592,33 @@ function CtaSection() {
 function Footer() {
   return (
     <footer className="lp-footer">
-      <span>Formbase &middot; MIT License</span>
-      <div className="lp-footer__links">
-        <a href="https://github.com/formbase/formbase" target="_blank" rel="noopener noreferrer">GitHub</a>
-        <a href="#features">Features</a>
-        <a href="#api">API</a>
+      <div className="lp-footer__inner">
+        <span className="lp-footer__brand">
+          <span className="lp-footer__logo-icon">F</span>
+          formbase
+        </span>
+        <div className="lp-footer__links">
+          <a href="#features">Features</a>
+          <a href="#api">API</a>
+          <a href="https://github.com/formbase/formbase" target="_blank" rel="noopener noreferrer">GitHub</a>
+        </div>
+        <span className="lp-footer__copy">MIT License &middot; {new Date().getFullYear()}</span>
       </div>
     </footer>
   )
 }
 
+/* ── Page ── */
 export default function LandingRoute() {
   return (
     <div className="lp">
       <Nav />
       <Hero />
-      <Compare />
+      <HowItWorks />
+      <EditorPreview />
       <Features />
-      <CodeTabs />
-      <Architecture />
-      <Steps />
-      <CtaSection />
+      <CodeSection />
+      <Cta />
       <Footer />
     </div>
   )

@@ -7,9 +7,4 @@ export default defineConfig({
     // pdfjs-dist 4.x uses top-level await which Vite needs to handle
     exclude: ['pdfjs-dist'],
   },
-  server: {
-    proxy: {
-      '/api': 'http://localhost:3001',
-    },
-  },
 })

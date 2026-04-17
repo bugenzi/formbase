@@ -1,7 +1,10 @@
 import { PDFDocument, PDFName, PDFDict, PDFArray, rgb } from 'pdf-lib'
+import pdfMake from 'pdfmake/build/pdfmake'
+import 'pdfmake/build/vfs_fonts'
 import { useFieldStore } from '../store/useFieldStore'
 import { useEditorContext } from '../context/EditorContext'
 import type { FormSchema, Field } from '../store/types'
+import type { TDocumentDefinitions, Content, ContentCanvas, ContentColumns, ContentText } from 'pdfmake/interfaces'
 import { saveAs } from 'file-saver'
 
 /**
@@ -169,5 +172,180 @@ export function useFormExport() {
     saveAs(blob, filename)
   }
 
-  return { exportJSON, exportToPdf, downloadJson, downloadPdf, loadPdfSafely }
+  /**
+   * Export fields as a pdfmake document definition.
+   * Produces a standalone form template (no original PDF background).
+   * Fields are grouped by page and rendered as labeled input areas.
+   */
+  function exportToPdfMakeDefinition(): TDocumentDefinitions {
+    const fields = useFieldStore.getState().fields
+    const pageEntries = [...engine.pages.entries()].sort(([a], [b]) => a - b)
+
+    // Group fields by page
+    const fieldsByPage: Record<number, Field[]> = {}
+    for (const f of Object.values(fields)) {
+      if (!fieldsByPage[f.pageIdx]) fieldsByPage[f.pageIdx] = []
+      fieldsByPage[f.pageIdx].push(f)
+    }
+
+    const content: Content[] = []
+
+    for (let pi = 0; pi < pageEntries.length; pi++) {
+      const [pageIdx, pageReg] = pageEntries[pi]
+      const pageFields = fieldsByPage[pageIdx] ?? []
+
+      if (pi > 0) {
+        content.push({ text: '', pageBreak: 'before' } as ContentText)
+      }
+
+      content.push({
+        text: `Page ${pageIdx + 1}`,
+        style: 'pageHeader',
+        margin: [0, 0, 0, 12],
+      } as ContentText)
+
+      if (pageFields.length === 0) {
+        content.push({ text: '(no fields on this page)', italics: true, color: '#999999', margin: [0, 0, 0, 8] } as ContentText)
+        continue
+      }
+
+      // Sort fields top-to-bottom, left-to-right (in screen order)
+      // Since ptY is bottom-left origin, higher ptY = higher on page
+      const sorted = [...pageFields].sort((a, b) => {
+        const ay = pageReg.pdfHeightPt - a.ptY - a.ptH
+        const by = pageReg.pdfHeightPt - b.ptY - b.ptH
+        if (Math.abs(ay - by) > 10) return ay - by
+        return a.ptX - b.ptX
+      })
+
+      for (const field of sorted) {
+        const fieldContent = buildFieldContent(field)
+        content.push(...fieldContent)
+      }
+    }
+
+    return {
+      content,
+      styles: {
+        pageHeader: { fontSize: 16, bold: true, color: '#1a1a2e' },
+        fieldLabel: { fontSize: 10, bold: true, color: '#374151', margin: [0, 8, 0, 2] },
+        fieldHint: { fontSize: 8, italics: true, color: '#9ca3af' },
+      },
+      defaultStyle: { font: 'Roboto', fontSize: 12 },
+      pageSize: pageEntries.length > 0
+        ? { width: pageEntries[0][1].pdfWidthPt, height: pageEntries[0][1].pdfHeightPt }
+        : 'A4',
+      pageMargins: [40, 40, 40, 40],
+      info: {
+        title: 'Form Template',
+        producer: 'FormPDF Editor (pdfmake)',
+      },
+    }
+  }
+
+  function buildFieldContent(field: Field): Content[] {
+    const label = field.label || field.type
+    const required = field.required ? ' *' : ''
+    const assignee = field.assignee ? ` [${field.assignee}]` : ''
+    const fontSize = field.fontSize ?? 12
+    const w = Math.min(field.ptW, 500) // cap width to page
+    const h = field.ptH
+
+    const items: Content[] = []
+
+    // Label row
+    items.push({
+      text: `${label}${required}${assignee}`,
+      style: 'fieldLabel',
+    } as ContentText)
+
+    switch (field.type) {
+      case 'checkbox': {
+        const cols: ContentColumns = {
+          columns: [
+            {
+              canvas: [
+                { type: 'rect', x: 0, y: 0, w: 14, h: 14, lineWidth: 1, lineColor: '#6b7280' },
+              ],
+              width: 20,
+            } as ContentCanvas,
+            { text: label, fontSize, width: '*', margin: [4, 0, 0, 0] } as ContentText,
+          ],
+          margin: [0, 2, 0, 8],
+        }
+        items.push(cols)
+        break
+      }
+      case 'signature':
+      case 'initials': {
+        const boxH = Math.max(h, field.type === 'signature' ? 48 : 36)
+        items.push({
+          canvas: [
+            { type: 'rect', x: 0, y: 0, w, h: boxH, r: 3, lineWidth: 1, lineColor: '#d1d5db', dash: { length: 4, space: 2 } },
+            { type: 'line', x1: 10, y1: boxH - 12, x2: w - 10, y2: boxH - 12, lineWidth: 0.5, lineColor: '#e5e7eb' },
+          ],
+          margin: [0, 2, 0, 8],
+        } as ContentCanvas)
+        items.push({ text: field.type === 'signature' ? 'Sign here' : 'Initials', style: 'fieldHint', margin: [0, -6, 0, 8] } as ContentText)
+        break
+      }
+      case 'dropdown': {
+        // Dropdown rendered as a bordered box with a down arrow indicator
+        items.push({
+          canvas: [
+            { type: 'rect', x: 0, y: 0, w, h: Math.max(h, 24), r: 2, lineWidth: 1, lineColor: '#d1d5db' },
+            // Arrow indicator
+            { type: 'polyline', points: [{ x: w - 18, y: 8 }, { x: w - 12, y: 16 }, { x: w - 6, y: 8 }], lineWidth: 1, lineColor: '#6b7280', closePath: false },
+          ],
+          margin: [0, 2, 0, 8],
+        } as ContentCanvas)
+        if (field.placeholder) {
+          items.push({ text: field.placeholder, style: 'fieldHint', margin: [4, -20, 0, 12] } as ContentText)
+        }
+        break
+      }
+      default: {
+        // text, date — bordered input box
+        items.push({
+          canvas: [
+            { type: 'rect', x: 0, y: 0, w, h: Math.max(h, 24), r: 2, lineWidth: 1, lineColor: '#d1d5db' },
+          ],
+          margin: [0, 2, 0, 8],
+        } as ContentCanvas)
+        if (field.placeholder) {
+          items.push({ text: field.placeholder, style: 'fieldHint', margin: [4, -20, 0, 12] } as ContentText)
+        }
+        break
+      }
+    }
+
+    return items
+  }
+
+  function exportPdfMakeDocDef(): TDocumentDefinitions {
+    return exportToPdfMakeDefinition()
+  }
+
+  async function downloadPdfMake(filename = 'form-template.pdf') {
+    const docDef = exportToPdfMakeDefinition()
+    const pdfDocGenerator = pdfMake.createPdf(docDef)
+    pdfDocGenerator.download(filename)
+  }
+
+  async function downloadPdfMakeJson(filename = 'form-template-pdfmake.json') {
+    const docDef = exportToPdfMakeDefinition()
+    const blob = new Blob([JSON.stringify(docDef, null, 2)], { type: 'application/json' })
+    saveAs(blob, filename)
+  }
+
+  return {
+    exportJSON,
+    exportToPdf,
+    exportPdfMakeDocDef,
+    downloadJson,
+    downloadPdf,
+    downloadPdfMake,
+    downloadPdfMakeJson,
+    loadPdfSafely,
+  }
 }

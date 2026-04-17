@@ -10,8 +10,6 @@ import { ErrorBoundary } from './ErrorBoundary'
 import { ToasterProvider, useToast } from './Toaster'
 import { useFormExport } from '../hooks/useFormExport'
 import { useSchemaImport } from '../hooks/useSchemaImport'
-import { useAutoSave } from '../hooks/useAutoSave'
-import { useFieldSync } from '../hooks/useFieldSync'
 import { useFieldStore } from '../store/useFieldStore'
 import { FIELD_DEFAULTS } from '../store/types'
 import type { Field } from '../store/types'
@@ -20,10 +18,7 @@ import '../styles/editor.css'
 export interface PdfFormEditorProps {
   pdfUrl?: string
   pdfFile?: File
-  aiProxyUrl: string
-  docId?: string              // Phase 8: enables auto-save when provided
-  syncServerUrl?: string      // Phase 9: enables Figma bilateral sync when provided
-  fetchFn?: (path: string, init?: RequestInit) => Promise<Response>  // Custom fetch (e.g. with auth)
+  aiProxyUrl?: string
   onExport?: (schema: ReturnType<typeof import('../hooks/useFormExport').useFormExport>['exportJSON']) => void
   onSave?: (pdfBytes: Uint8Array) => void
 }
@@ -38,24 +33,18 @@ const FIELD_SHORTCUTS: Record<string, Field['type']> = {
   l: 'dropdown',
 }
 
-function EditorInner({ pdfUrl, pdfFile: pdfFileProp, docId, syncServerUrl, fetchFn, onExport, onSave }: Omit<PdfFormEditorProps, 'aiProxyUrl'>) {
+function EditorInner({ pdfUrl, pdfFile: pdfFileProp, onExport, onSave }: Omit<PdfFormEditorProps, 'aiProxyUrl'>) {
   const [loadedFile, setLoadedFile] = useState<File | null>(pdfFileProp ?? null)
   const [scale, setScale] = useState(1.0)
   const [pageCount, setPageCount] = useState(0)
   const [pageWarnings, setPageWarnings] = useState<Record<number, string>>({})
   const [urlLoading, setUrlLoading] = useState(false)
   const [currentPage, setCurrentPage] = useState(0)
-  const { downloadJson, downloadPdf } = useFormExport()
+  const { downloadJson, downloadPdf, downloadPdfMake, downloadPdfMakeJson } = useFormExport()
   const { importFile } = useSchemaImport()
   const { toast } = useToast()
   const { engine } = useEditorContext()
   const fieldCount = useFieldStore(s => Object.keys(s.fields).length)
-
-  // Phase 8: Auto-save schema to server (with auth if provided)
-  useAutoSave(docId, fetchFn)
-
-  // Phase 9: Bilateral sync with Figma
-  useFieldSync(docId, syncServerUrl)
 
   // Load PDF from URL if pdfFile prop is not provided
   useEffect(() => {
@@ -105,6 +94,16 @@ function EditorInner({ pdfUrl, pdfFile: pdfFileProp, docId, syncServerUrl, fetch
       toast('PDF exported with form fields', 'success')
     }
   }, [loadedFile, downloadPdf, toast])
+
+  const handleExportPdfMake = useCallback(() => {
+    downloadPdfMake()
+    toast('Form template PDF exported', 'success')
+  }, [downloadPdfMake, toast])
+
+  const handleExportPdfMakeJson = useCallback(() => {
+    downloadPdfMakeJson()
+    toast('pdfmake document definition exported', 'success')
+  }, [downloadPdfMakeJson, toast])
 
   const handleImportSchema = useCallback(() => {
     const input = document.createElement('input')
@@ -243,6 +242,8 @@ function EditorInner({ pdfUrl, pdfFile: pdfFileProp, docId, syncServerUrl, fetch
           onScaleChange={setScale}
           onExportJson={handleExportJson}
           onExportPdf={handleExportPdf}
+          onExportPdfMake={handleExportPdfMake}
+          onExportPdfMakeJson={handleExportPdfMakeJson}
           onImportSchema={handleImportSchema}
           pdfLoaded={!!loadedFile}
         />
@@ -343,7 +344,7 @@ function EditorInner({ pdfUrl, pdfFile: pdfFileProp, docId, syncServerUrl, fetch
 export function PdfFormEditor({ aiProxyUrl, ...rest }: PdfFormEditorProps) {
   return (
     <ErrorBoundary>
-      <EditorProvider aiProxyUrl={aiProxyUrl}>
+      <EditorProvider aiProxyUrl={aiProxyUrl ?? ''}>
         <ToasterProvider>
           <EditorInner {...rest} />
         </ToasterProvider>
