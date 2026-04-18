@@ -2,28 +2,38 @@ name: CI
 
 on:
   push:
-    branches: [main, master]
+    branches:
+      - main
+      - master
   pull_request:
-    branches: [main, master]
+    branches:
+      - main
+      - master
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
-  check:
-    name: Build, Test & Typecheck
+  editor-validate:
+    name: editor-validate
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with:
           version: 10
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
@@ -31,19 +41,51 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build editor library
-        run: pnpm run build
+      - name: Build editor package
+        run: pnpm --filter @formpdf/editor build
 
-      - name: Typecheck all packages
-        run: pnpm run typecheck
+      - name: Run editor tests
+        run: pnpm --filter @formpdf/editor test
 
-      - name: Run tests
-        run: pnpm run test
+      - name: Typecheck editor package
+        run: pnpm --filter @formpdf/editor typecheck
 
-      - name: Verify dist output
+      - name: Verify editor dist output
         run: |
           test -f packages/pdf-form-editor/dist/index.js || (echo "Missing ESM output" && exit 1)
           test -f packages/pdf-form-editor/dist/index.cjs || (echo "Missing CJS output" && exit 1)
           test -f packages/pdf-form-editor/dist/index.d.ts || (echo "Missing types" && exit 1)
           test -f packages/pdf-form-editor/dist/index.css || (echo "Missing CSS" && exit 1)
-          echo "All dist outputs verified"
+          echo "All editor dist outputs verified"
+
+  web-validate:
+    name: web-validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build editor package
+        run: pnpm --filter @formpdf/editor build
+
+      - name: Typecheck web app
+        run: pnpm --filter @formpdf/web typecheck
+
+      - name: Build web app
+        run: pnpm --filter @formpdf/web build
