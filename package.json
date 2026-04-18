@@ -3,7 +3,9 @@
   "private": true,
   "scripts": {
     "dev": "pnpm -r --parallel run dev",
-    "build": "pnpm --filter @formpdf/editor run build",
+    "build": "pnpm --filter @formpdf/editor run build && pnpm --filter @formpdf/web run build",
+    "build:editor": "pnpm --filter @formpdf/editor run build",
+    "build:web": "pnpm --filter @formpdf/web run build",
     "test": "pnpm -r run test",
     "typecheck": "pnpm -r run typecheck"
   },
