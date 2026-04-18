@@ -1,15 +1,15 @@
 {
   "name": "@formpdf/editor",
   "version": "0.1.0",
-  "description": "Embeddable PDF form field editor with AI detection — drop fields onto any PDF, export AcroForm-ready documents",
+  "description": "Embeddable PDF form field editor for React with JSON and AcroForm export",
   "type": "module",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/formbase/formbase",
+    "url": "https://github.com/bugenzi/formbase",
     "directory": "packages/pdf-form-editor"
   },
-  "homepage": "https://github.com/formbase/formbase#readme",
+  "homepage": "https://github.com/bugenzi/formbase#readme",
   "keywords": [
     "pdf",
     "form",
