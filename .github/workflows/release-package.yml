@@ -1,0 +1,111 @@
+name: Release Package
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+concurrency:
+  group: release-package-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  publish-package:
+    name: publish-package
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: ${{ vars.PACKAGE_REGISTRY_URL || 'https://registry.npmjs.org' }}
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build editor package
+        run: pnpm --filter @formpdf/editor build
+
+      - name: Run editor tests
+        run: pnpm --filter @formpdf/editor test
+
+      - name: Typecheck editor package
+        run: pnpm --filter @formpdf/editor typecheck
+
+      - name: Resolve release metadata
+        id: release
+        shell: bash
+        run: |
+          CURRENT_VERSION=$(node -p "require('./packages/pdf-form-editor/package.json').version")
+          PACKAGE_NAME=$(node -p "require('./packages/pdf-form-editor/package.json').name")
+          BEFORE_SHA="${{ github.event.before }}"
+          PREVIOUS_VERSION=""
+
+          if [ -n "$BEFORE_SHA" ] && [ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ] && git cat-file -e "${BEFORE_SHA}:packages/pdf-form-editor/package.json" 2>/dev/null; then
+            PREVIOUS_VERSION=$(git show "${BEFORE_SHA}:packages/pdf-form-editor/package.json" | node -e "let data=''; process.stdin.on('data', chunk => data += chunk); process.stdin.on('end', () => process.stdout.write(JSON.parse(data).version));")
+          fi
+
+          SHOULD_PUBLISH=false
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            SHOULD_PUBLISH=true
+          elif [ -z "$PREVIOUS_VERSION" ] || [ "$CURRENT_VERSION" != "$PREVIOUS_VERSION" ]; then
+            SHOULD_PUBLISH=true
+          fi
+
+          echo "package_name=$PACKAGE_NAME" >> "$GITHUB_OUTPUT"
+          echo "current_version=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
+          echo "previous_version=$PREVIOUS_VERSION" >> "$GITHUB_OUTPUT"
+          echo "should_publish=$SHOULD_PUBLISH" >> "$GITHUB_OUTPUT"
+
+      - name: Print release decision
+        run: |
+          echo "Package: ${{ steps.release.outputs.package_name }}"
+          echo "Previous version: ${{ steps.release.outputs.previous_version || 'none' }}"
+          echo "Current version: ${{ steps.release.outputs.current_version }}"
+          echo "Should publish: ${{ steps.release.outputs.should_publish }}"
+
+      - name: Publish package
+        if: steps.release.outputs.should_publish == 'true'
+        working-directory: packages/pdf-form-editor
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          PACKAGE_PUBLISH_ACCESS: ${{ vars.PACKAGE_PUBLISH_ACCESS }}
+        run: |
+          if [ -n "$PACKAGE_PUBLISH_ACCESS" ]; then
+            pnpm publish --no-git-checks --access "$PACKAGE_PUBLISH_ACCESS"
+          else
+            pnpm publish --no-git-checks --access public
+          fi
+
+      - name: Create package tag
+        if: steps.release.outputs.should_publish == 'true'
+        env:
+          RELEASE_TAG: editor-v${{ steps.release.outputs.current_version }}
+        run: |
+          if git rev-parse "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Tag $RELEASE_TAG already exists. Skipping tag creation."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$RELEASE_TAG" -m "Release @formpdf/editor v${{ steps.release.outputs.current_version }}"
+          git push origin "$RELEASE_TAG"
