@@ -105,9 +105,10 @@ export function PdfCanvas({ pdfFile, scale, onPageCount, onPageWarning, onVisibl
     if (!pdfFile) return
 
     let cancelled = false
+    const file = pdfFile
 
     async function load() {
-      const arrayBuffer = await pdfFile.arrayBuffer()
+      const arrayBuffer = await file.arrayBuffer()
 
       // Security hardening for untrusted PDFs:
       // - use TypedArray input as recommended by PDF.js
