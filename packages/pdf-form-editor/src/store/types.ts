@@ -8,7 +8,7 @@
 export interface Field {
   id: string
   type: 'text' | 'signature' | 'initials' | 'date' | 'checkbox' | 'dropdown'
-  pageIdx: number   // 0-indexed
+  pageIdx: number
 
   // PDF User Space coordinates — bottom-left origin, Y grows upward, units: points
   ptX: number
@@ -18,13 +18,13 @@ export interface Field {
 
   label: string
   required: boolean
-  assignee: string     // e.g. "signer1", "notary", ""
-  aiPending?: boolean  // true = placed by AI, not yet confirmed by user
+  assignee: string
+  aiPending?: boolean
 
   // Text styling (used in export and field preview)
-  fontSize?: number      // points, default 12
-  fontColor?: string     // hex, default '#000000'
-  placeholder?: string   // placeholder text shown in the field
+  fontSize?: number
+  fontColor?: string
+  placeholder?: string
 }
 
 export interface TextOverlay {
@@ -57,10 +57,22 @@ export interface FormSchema {
     page: number
     required: boolean
     assignee: string
+    fontSize?: number
+    fontColor?: string
+    placeholder?: string
     positionPt: { x: number; y: number; w: number; h: number }
     // positionRel uses TOP-LEFT origin for front-end consumption compatibility
     // relY = (pageHeightPt - ptY - ptH) / pageHeightPt
     positionRel: { x: number; y: number; w: number; h: number }
+  }>
+  textOverlays?: Array<{
+    id: string
+    page: number
+    positionPt: { x: number; y: number; w: number; h: number }
+    content: string
+    fontSize?: number
+    fontFamily?: string
+    color?: string
   }>
 }
 
