@@ -27,7 +27,7 @@ function tokenize(code: string): Array<{ text: string; type: string }> {
       const quote = code[i]
       let j = i + 1
       while (j < code.length && code[j] !== quote) {
-        if (code[j] === '\\') j++ // skip escaped char
+        if (code[j] === '\\') j++
         j++
       }
       tokens.push({ text: code.slice(i, j + 1), type: 'str' })
@@ -51,7 +51,6 @@ function tokenize(code: string): Array<{ text: string; type: string }> {
       }
     }
 
-    // Word (could be keyword, attribute, or plain)
     if (/[a-zA-Z_$]/.test(code[i])) {
       let j = i
       while (j < code.length && /[\w$]/.test(code[j])) j++
@@ -67,7 +66,6 @@ function tokenize(code: string): Array<{ text: string; type: string }> {
       continue
     }
 
-    // Numbers
     if (/\d/.test(code[i])) {
       let j = i
       while (j < code.length && /[\d.]/.test(code[j])) j++
@@ -76,7 +74,6 @@ function tokenize(code: string): Array<{ text: string; type: string }> {
       continue
     }
 
-    // Everything else (whitespace, operators, punctuation)
     tokens.push({ text: code[i], type: '' })
     i++
   }
@@ -95,7 +92,6 @@ function SyntaxPre({ code }: { code: string }) {
   )
 }
 
-/* ── Intersection observer hook ── */
 function useInView(threshold = 0.12) {
   const ref = useRef<HTMLDivElement>(null)
   const [visible, setVisible] = useState(false)
@@ -126,7 +122,6 @@ function S({ children, className = '', id, delay = 0 }: { children: React.ReactN
   )
 }
 
-/* ── Typing animation for hero ── */
 function TypeWriter({ words, className }: { words: string[]; className?: string }) {
   const [idx, setIdx] = useState(0)
   const [text, setText] = useState('')
@@ -155,7 +150,6 @@ function TypeWriter({ words, className }: { words: string[]; className?: string 
   return <span className={className}>{text}<span className="lp-cursor" /></span>
 }
 
-/* ── Nav ── */
 function Nav() {
   const nav = useNavigate()
   const [scrolled, setScrolled] = useState(false)
@@ -176,7 +170,7 @@ function Nav() {
         <div className="lp-nav__links">
           <a href="#how-it-works">How it works</a>
           <a href="#features">Features</a>
-          <a href="https://github.com/formbase/formbase" target="_blank" rel="noopener noreferrer">GitHub</a>
+          <a href="https://github.com/bugenzi/formbase" target="_blank" rel="noopener noreferrer">GitHub</a>
         </div>
         <button className="lp-nav__cta" onClick={() => nav('/editor')}>
           Open Editor
@@ -186,7 +180,6 @@ function Nav() {
   )
 }
 
-/* ── Hero ── */
 function Hero() {
   const nav = useNavigate()
   return (
@@ -212,8 +205,8 @@ function Hero() {
         </h1>
 
         <p className="lp-hero__sub">
-          Place fields on any PDF with a visual editor.<br />
-          Export filled PDFs and JSON schemas programmatically.
+          Start in the visual editor, then ship the same workflow in React.<br />
+          Export JSON schemas or fillable PDFs from the same package.
         </p>
 
         <div className="lp-hero__actions">
@@ -239,41 +232,15 @@ function Hero() {
   )
 }
 
-/* ── How it Works ── */
 function HowItWorks() {
   return (
     <section className="lp-flow" id="how-it-works">
-      <S><h2 className="lp-section-title">Design once. Fill forever.</h2></S>
-      <S delay={80}><p className="lp-section-sub">From PDF template to programmatic document generation.</p></S>
+      <S><h2 className="lp-section-title">Start visually. Export programmatically.</h2></S>
+      <S delay={80}><p className="lp-section-sub">The open-source flow today is editor first, then schema or PDF export.</p></S>
 
       <div className="lp-flow__steps">
-        {/* Step 1: Export programmatically — THIS WORKS TODAY */}
         <S delay={0} className="lp-flow__step">
           <div className="lp-flow__num">1</div>
-          <div className="lp-flow__step-body">
-            <h3>Export JSON schema & filled PDFs</h3>
-            <p>Use our npm package to export field schemas as JSON or inject AcroForm fields into your PDF. Works in React — two function calls.</p>
-            <div className="lp-flow__code">
-<SyntaxPre code={`import { useFormExport } from '@formpdf/editor'
-
-const { exportJSON, exportToPdf } = useFormExport()
-
-// JSON schema with all field positions
-const schema = exportJSON()
-
-// PDF with AcroForm fields baked in
-const pdfBytes = await exportToPdf(originalFile)`} />
-            </div>
-          </div>
-        </S>
-
-        <div className="lp-flow__connector" aria-hidden="true">
-          <svg width="2" height="60" viewBox="0 0 2 60"><line x1="1" y1="0" x2="1" y2="60" stroke="var(--c-border)" strokeWidth="2" strokeDasharray="4 4"/></svg>
-        </div>
-
-        {/* Step 2: Visual editor — THIS WORKS TODAY */}
-        <S delay={120} className="lp-flow__step">
-          <div className="lp-flow__num">2</div>
           <div className="lp-flow__step-body">
             <h3>Place fields with the visual editor</h3>
             <p>Open any PDF. Drag text, signature, date, checkbox, dropdown, or initials fields exactly where they belong. Keyboard shortcuts, undo/redo, alignment guides.</p>
@@ -293,16 +260,37 @@ import '@formpdf/editor/styles.css'
           <svg width="2" height="60" viewBox="0 0 2 60"><line x1="1" y1="0" x2="1" y2="60" stroke="var(--c-border)" strokeWidth="2" strokeDasharray="4 4"/></svg>
         </div>
 
-        {/* Step 3: Coming soon — AI + Headless SDK */}
+        <S delay={120} className="lp-flow__step">
+          <div className="lp-flow__num">2</div>
+          <div className="lp-flow__step-body">
+            <h3>Export JSON schema or filled PDFs</h3>
+            <p>Use the same package to export field schemas as JSON or inject AcroForm fields into your PDF. That gives you a clear path from editor testing to app integration.</p>
+            <div className="lp-flow__code">
+<SyntaxPre code={`import { useFormExport } from '@formpdf/editor'
+
+const { exportJSON, exportToPdf } = useFormExport()
+
+// JSON schema with all field positions
+const schema = exportJSON()
+
+// PDF with AcroForm fields baked in
+const pdfBytes = await exportToPdf(originalFile)`} />
+            </div>
+          </div>
+        </S>
+
+        <div className="lp-flow__connector" aria-hidden="true">
+          <svg width="2" height="60" viewBox="0 0 2 60"><line x1="1" y1="0" x2="1" y2="60" stroke="var(--c-border)" strokeWidth="2" strokeDasharray="4 4"/></svg>
+        </div>
+
         <S delay={240} className="lp-flow__step">
           <div className="lp-flow__num lp-flow__num--soon">3</div>
           <div className="lp-flow__step-body">
-            <h3>AI detection & headless fill <span className="lp-badge-soon">Coming Soon</span></h3>
-            <p>Auto-detect fields with AI vision. Fill PDFs programmatically from any backend — no browser needed.</p>
+            <h3>AI assistance and headless fill <span className="lp-badge-soon">Planned</span></h3>
+            <p>We are exploring AI-assisted detection and a headless fill SDK. Those are roadmap items, not part of the zero-config open-source flow today.</p>
             <div className="lp-flow__code lp-flow__code--muted">
-<SyntaxPre code={`// @formbase/sdk — coming soon
-import { fillPdf } from '@formbase/sdk'
-
+<SyntaxPre code={`// Planned API example — not shipped yet
+// Headless fill SDK naming and API may change
 const pdf = await fillPdf({
   pdf: './lease-template.pdf',
   schema: './lease-schema.json',
@@ -319,7 +307,6 @@ const pdf = await fillPdf({
   )
 }
 
-/* ── Editor Mockup ── */
 function EditorPreview() {
   const nav = useNavigate()
   return (
@@ -395,7 +382,6 @@ function EditorPreview() {
   )
 }
 
-/* ── Features ── */
 const FEATURES = [
   {
     icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="13" y2="14"/></svg>,
@@ -424,13 +410,13 @@ const FEATURES = [
   {
     icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>,
     title: 'Zero Lock-in',
-    desc: 'MIT licensed. No API keys required. No server dependency. Works fully offline. Fork it, extend it, ship it.',
+    desc: 'MIT licensed. No API keys required for the base editor flow. No server dependency for local editing or export.',
     color: '#c8a62c',
   },
   {
     icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 3"/></svg>,
-    title: 'AI Field Detection',
-    desc: 'Point Claude at a page image. Fields auto-detected with type, position, and label.',
+    title: 'AI-Assisted Detection',
+    desc: 'Planned and experimental. Requires your own proxy if you want to explore it.',
     color: '#7c68ee',
     soon: true,
   },
@@ -440,7 +426,7 @@ function Features() {
   return (
     <section className="lp-features" id="features">
       <S><h2 className="lp-section-title">Built for developers</h2></S>
-      <S delay={80}><p className="lp-section-sub">Everything you need to build PDF form workflows in React.</p></S>
+      <S delay={80}><p className="lp-section-sub">What works today for the editor package, plus the roadmap areas we are still exploring.</p></S>
       <div className="lp-features__grid">
         {FEATURES.map((f, i) => (
           <S key={f.title} delay={i * 60} className="lp-features__card">
@@ -456,7 +442,6 @@ function Features() {
   )
 }
 
-/* ── Code Tabs ── */
 const TABS = [
   {
     label: 'Export Schema',
@@ -514,11 +499,9 @@ function CustomEditor({ file, zoom }) {
 }`,
   },
   {
-    label: 'Headless Fill (Soon)',
-    code: `// Coming soon — @formbase/sdk
-import { fillPdf } from '@formbase/sdk'
-
-// Runs on Node, Bun, Deno, Lambda — anywhere
+    label: 'Headless Fill (Planned)',
+    code: `// Planned API example — not shipped yet
+// SDK name and API may change
 const completed = await fillPdf({
   pdf: readFileSync('./lease-template.pdf'),
   schema: readFileSync('./lease-schema.json'),
@@ -539,7 +522,7 @@ function CodeSection() {
   return (
     <section className="lp-code" id="api">
       <S><h2 className="lp-section-title">Use it your way</h2></S>
-      <S delay={80}><p className="lp-section-sub">Export schemas, drop in the full editor, compose your own layout, or go fully headless.</p></S>
+      <S delay={80}><p className="lp-section-sub">Start with the full editor, export what you need, then compose your own layout when the defaults stop being enough.</p></S>
       <S delay={160}>
         <div className="lp-code__window">
           <div className="lp-code__tabs">
@@ -562,7 +545,6 @@ function CodeSection() {
   )
 }
 
-/* ── CTA ── */
 function Cta() {
   const nav = useNavigate()
   return (
@@ -571,13 +553,13 @@ function Cta() {
         <div className="lp-cta__box">
           <div className="lp-cta__glow" aria-hidden="true" />
           <h2>MIT Licensed. Free forever.</h2>
-          <p>Build PDF form workflows without vendor lock-in. Star us on GitHub, open an issue, or just start building.</p>
+          <p>Use the editor locally, export schemas or PDFs, and adopt the package at your own pace.</p>
           <div className="lp-cta__actions">
             <button className="lp-btn lp-btn--white" onClick={() => nav('/editor')}>
               Open Editor
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
             </button>
-            <a className="lp-btn lp-btn--outline" href="https://github.com/formbase/formbase" target="_blank" rel="noopener noreferrer">
+            <a className="lp-btn lp-btn--outline" href="https://github.com/bugenzi/formbase" target="_blank" rel="noopener noreferrer">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
               Star on GitHub
             </a>
@@ -588,7 +570,6 @@ function Cta() {
   )
 }
 
-/* ── Footer ── */
 function Footer() {
   return (
     <footer className="lp-footer">
@@ -600,7 +581,7 @@ function Footer() {
         <div className="lp-footer__links">
           <a href="#features">Features</a>
           <a href="#api">API</a>
-          <a href="https://github.com/formbase/formbase" target="_blank" rel="noopener noreferrer">GitHub</a>
+          <a href="https://github.com/bugenzi/formbase" target="_blank" rel="noopener noreferrer">GitHub</a>
         </div>
         <span className="lp-footer__copy">MIT License &middot; {new Date().getFullYear()}</span>
       </div>
@@ -608,7 +589,6 @@ function Footer() {
   )
 }
 
-/* ── Page ── */
 export default function LandingRoute() {
   return (
     <div className="lp">
