@@ -1,3 +1,10 @@
+# Update these in GitHub before using this workflow:
+# Secrets
+#   NPM_TOKEN=replace-me-with-your-registry-token
+# Variables
+#   PACKAGE_REGISTRY_URL=https://registry.npmjs.org
+#   PACKAGE_PUBLISH_ACCESS=public
+
 name: Release Package
 
 on:
@@ -74,6 +81,21 @@ jobs:
           echo "current_version=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
           echo "previous_version=$PREVIOUS_VERSION" >> "$GITHUB_OUTPUT"
           echo "should_publish=$SHOULD_PUBLISH" >> "$GITHUB_OUTPUT"
+
+      - name: Validate release configuration
+        if: steps.release.outputs.should_publish == 'true'
+        env:
+          PACKAGE_REGISTRY_URL_VALUE: ${{ vars.PACKAGE_REGISTRY_URL || 'https://registry.npmjs.org' }}
+          PACKAGE_PUBLISH_ACCESS_VALUE: ${{ vars.PACKAGE_PUBLISH_ACCESS || 'public' }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          echo "Release registry URL: $PACKAGE_REGISTRY_URL_VALUE"
+          echo "Release publish access: $PACKAGE_PUBLISH_ACCESS_VALUE"
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "Missing GitHub secret NPM_TOKEN."
+            echo "Example: NPM_TOKEN=replace-me-with-your-registry-token"
+            exit 1
+          fi
 
       - name: Print release decision
         run: |
