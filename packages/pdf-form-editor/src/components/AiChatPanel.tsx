@@ -8,6 +8,7 @@ interface ChatMessage {
 
 export function AiChatPanel(): React.ReactElement {
   const { aiProxyUrl } = useEditorContext()
+  const hasAiProxy = Boolean(aiProxyUrl.trim())
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -20,6 +21,17 @@ export function AiChatPanel(): React.ReactElement {
   }, [messages, loading])
 
   async function handleSend() {
+    if (!hasAiProxy) {
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: 'AI is disabled. Configure aiProxyUrl to enable chat and field detection.',
+        },
+      ])
+      return
+    }
+
     const text = input.trim()
     if (!text || loading) return
 
@@ -59,8 +71,14 @@ export function AiChatPanel(): React.ReactElement {
     <div className="ai-chat-panel">
       <h3 className="pfe-sidebar__title" style={{ marginBottom: 8 }}>AI Assistant</h3>
 
+      {!hasAiProxy && (
+        <p className="ai-chat-panel__empty">
+          AI is disabled by default. Set <code>aiProxyUrl</code> to enable chat and field detection. When enabled, prompts and page images may be sent to your proxy.
+        </p>
+      )}
+
       <div className="ai-chat-panel__messages" ref={scrollRef}>
-        {messages.length === 0 && (
+        {messages.length === 0 && hasAiProxy && (
           <p className="ai-chat-panel__empty">
             Ask AI to detect form fields, describe your document, or get help with field placement.
           </p>
@@ -87,13 +105,13 @@ export function AiChatPanel(): React.ReactElement {
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleSend()}
-          placeholder="Ask AI..."
-          disabled={loading}
+          placeholder={hasAiProxy ? 'Ask AI...' : 'Configure aiProxyUrl to enable AI'}
+          disabled={loading || !hasAiProxy}
         />
         <button
           className="ai-chat-panel__send"
           onClick={handleSend}
-          disabled={loading || !input.trim()}
+          disabled={loading || !input.trim() || !hasAiProxy}
         >
           Send
         </button>
