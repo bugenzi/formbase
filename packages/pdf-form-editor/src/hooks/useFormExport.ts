@@ -3,9 +3,10 @@ import pdfMake from 'pdfmake/build/pdfmake'
 import 'pdfmake/build/vfs_fonts'
 import { useFieldStore } from '../store/useFieldStore'
 import { useEditorContext } from '../context/EditorContext'
-import type { FormSchema, Field } from '../store/types'
+import type { Field } from '../store/types'
 import type { TDocumentDefinitions, Content, ContentCanvas, ContentColumns, ContentText } from 'pdfmake/interfaces'
 import { saveAs } from 'file-saver'
+import { buildFormSchema } from '../schema/formSchema'
 
 /**
  * IMPORTANT — pdf-lib hard limits:
@@ -25,7 +26,6 @@ export function useFormExport() {
     try {
       const doc = await PDFDocument.load(bytes)
 
-      // Check for existing digital signatures — warn before any modification
       const acroForm = doc.catalog.lookupMaybe(PDFName.of('AcroForm'), PDFDict)
       if (acroForm) {
         const fieldArray = acroForm.lookupMaybe(PDFName.of('Fields'), PDFArray)
@@ -58,47 +58,15 @@ export function useFormExport() {
     }
   }
 
-  function exportJSON(): FormSchema {
-    // Read fields at call time (not hook creation time) to avoid stale data
-    const fields = useFieldStore.getState().fields
-
-    const pages = [...engine.pages.entries()].map(([i, p]) => ({
-      page: i + 1,
-      widthPt: p.pdfWidthPt,
-      heightPt: p.pdfHeightPt,
-    }))
-
-    const schemaFields = Object.values(fields).map(f => {
-      const p = engine.getPage(f.pageIdx)!
-      return {
-        id: f.id,
-        type: f.type,
-        label: f.label,
-        page: f.pageIdx + 1,
-        required: f.required,
-        assignee: f.assignee,
-        fontSize: f.fontSize ?? 12,
-        fontColor: f.fontColor ?? '#000000',
-        placeholder: f.placeholder ?? '',
-        positionPt: { x: f.ptX, y: f.ptY, w: f.ptW, h: f.ptH },
-        // positionRel uses TOP-LEFT origin for front-end consumers
-        positionRel: {
-          x: f.ptX / p.pdfWidthPt,
-          y: (p.pdfHeightPt - f.ptY - f.ptH) / p.pdfHeightPt,
-          w: f.ptW / p.pdfWidthPt,
-          h: f.ptH / p.pdfHeightPt,
-        },
-      }
-    })
-
-    return { version: '2.0', pages, fields: schemaFields }
+  function exportJSON() {
+    const { fields, textOverlays } = useFieldStore.getState()
+    return buildFormSchema(fields, textOverlays, engine.pages.entries())
   }
 
   async function exportToPdf(originalFile: File): Promise<Uint8Array | null> {
     const doc = await loadPdfSafely(originalFile)
     if (!doc) return null
 
-    // Read fields at call time to get latest state
     const fields = useFieldStore.getState().fields
 
     const form = doc.getForm()
@@ -108,8 +76,6 @@ export function useFormExport() {
       const page = pdfPages[field.pageIdx]
       if (!page) continue
 
-      // pdf-lib uses bottom-left origin natively — no Y-flip needed here
-      // field.ptX and field.ptY are already in PDF user space
       const rect = {
         x: field.ptX,
         y: field.ptY,
@@ -120,12 +86,12 @@ export function useFormExport() {
       const fieldName = field.label || field.id
 
       const fontSize = field.fontSize ?? 12
-      // Parse hex color to rgb (default black)
       const hex = field.fontColor ?? '#000000'
       const r = parseInt(hex.slice(1, 3), 16) / 255
       const g = parseInt(hex.slice(3, 5), 16) / 255
       const b = parseInt(hex.slice(5, 7), 16) / 255
       const color = rgb(r, g, b)
+      void color
 
       switch (field.type) {
         case 'text':
@@ -138,7 +104,6 @@ export function useFormExport() {
         }
         case 'signature':
         case 'initials': {
-          // pdf-lib adds blank signature widget (input area only, no crypto signing)
           const sf = form.createTextField(fieldName)
           sf.addToPage(page, rect)
           sf.setFontSize(fontSize)
@@ -172,16 +137,10 @@ export function useFormExport() {
     saveAs(blob, filename)
   }
 
-  /**
-   * Export fields as a pdfmake document definition.
-   * Produces a standalone form template (no original PDF background).
-   * Fields are grouped by page and rendered as labeled input areas.
-   */
   function exportToPdfMakeDefinition(): TDocumentDefinitions {
     const fields = useFieldStore.getState().fields
     const pageEntries = [...engine.pages.entries()].sort(([a], [b]) => a - b)
 
-    // Group fields by page
     const fieldsByPage: Record<number, Field[]> = {}
     for (const f of Object.values(fields)) {
       if (!fieldsByPage[f.pageIdx]) fieldsByPage[f.pageIdx] = []
@@ -209,8 +168,6 @@ export function useFormExport() {
         continue
       }
 
-      // Sort fields top-to-bottom, left-to-right (in screen order)
-      // Since ptY is bottom-left origin, higher ptY = higher on page
       const sorted = [...pageFields].sort((a, b) => {
         const ay = pageReg.pdfHeightPt - a.ptY - a.ptH
         const by = pageReg.pdfHeightPt - b.ptY - b.ptH
@@ -248,12 +205,11 @@ export function useFormExport() {
     const required = field.required ? ' *' : ''
     const assignee = field.assignee ? ` [${field.assignee}]` : ''
     const fontSize = field.fontSize ?? 12
-    const w = Math.min(field.ptW, 500) // cap width to page
+    const w = Math.min(field.ptW, 500)
     const h = field.ptH
 
     const items: Content[] = []
 
-    // Label row
     items.push({
       text: `${label}${required}${assignee}`,
       style: 'fieldLabel',
@@ -290,11 +246,9 @@ export function useFormExport() {
         break
       }
       case 'dropdown': {
-        // Dropdown rendered as a bordered box with a down arrow indicator
         items.push({
           canvas: [
             { type: 'rect', x: 0, y: 0, w, h: Math.max(h, 24), r: 2, lineWidth: 1, lineColor: '#d1d5db' },
-            // Arrow indicator
             { type: 'polyline', points: [{ x: w - 18, y: 8 }, { x: w - 12, y: 16 }, { x: w - 6, y: 8 }], lineWidth: 1, lineColor: '#6b7280', closePath: false },
           ],
           margin: [0, 2, 0, 8],
@@ -305,7 +259,6 @@ export function useFormExport() {
         break
       }
       default: {
-        // text, date — bordered input box
         items.push({
           canvas: [
             { type: 'rect', x: 0, y: 0, w, h: Math.max(h, 24), r: 2, lineWidth: 1, lineColor: '#d1d5db' },
