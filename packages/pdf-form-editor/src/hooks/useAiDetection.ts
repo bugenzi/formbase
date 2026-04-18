@@ -25,7 +25,15 @@ export function useAiDetection(
   const { addField } = useFieldStore.getState()
   const { engine, aiProxyUrl } = useEditorContext()
 
+  function assertAiProxyConfigured() {
+    if (!aiProxyUrl.trim()) {
+      throw new Error('AI detection is disabled. Configure aiProxyUrl to enable it.')
+    }
+  }
+
   async function detectPage(pageIdx: number): Promise<void> {
+    assertAiProxyConfigured()
+
     const pageEl = document.querySelector<HTMLElement>(`[data-page="${pageIdx}"]`)
     const canvas = pageEl?.querySelector('canvas')
     if (!canvas) throw new Error(`Canvas not found for page ${pageIdx}`)
@@ -51,11 +59,9 @@ export function useAiDetection(
     }> = data.fields ?? []
 
     for (const detected of detectedFields) {
-      // relToScreen: relative top-left → DOM pixels (no Y-flip)
       const screen = engine.relToScreen(detected.x, detected.y, detected.w, detected.h, pageIdx)
       if (!screen) continue
 
-      // screenToPdf: DOM pixels → PDF points (applies Y-flip)
       const pts = engine.screenToPdf(screen.x, screen.y, screen.w, screen.h, pageIdx)
       if (!pts) continue
 
@@ -78,6 +84,13 @@ export function useAiDetection(
   }
 
   async function detectAll(totalPages: number): Promise<void> {
+    try {
+      assertAiProxyConfigured()
+    } catch (error) {
+      setStatus({ status: 'error', progress: null, error: (error as Error).message })
+      return
+    }
+
     setStatus({ status: 'running', progress: { current: 0, total: totalPages, page: 0 }, error: null })
 
     const BATCH_SIZE = 3
