@@ -1,6 +1,6 @@
 # @formpdf/editor
 
-Embeddable PDF form field editor for React. Drop fields onto any PDF, export AcroForm-ready documents, and build custom signing workflows — all in PDF-native coordinates.
+Embeddable PDF form editor for React. Place fields on any PDF, export JSON schemas or AcroForm-ready PDFs, and keep coordinates in PDF-native space.
 
 ## Install
 
@@ -10,7 +10,7 @@ npm install @formpdf/editor
 pnpm add @formpdf/editor
 ```
 
-## Quick Start
+## Quick start
 
 ```tsx
 import { PdfFormEditor } from '@formpdf/editor'
@@ -20,38 +20,81 @@ function App() {
   return (
     <PdfFormEditor
       pdfUrl="/contract.pdf"
-      aiProxyUrl="/api/pdf-detect"
       onSave={(bytes) => upload(bytes)}
     />
   )
 }
 ```
 
-## Features
+That is the zero-config path. You do **not** need an AI proxy to use the editor, export schemas, or export fillable PDFs.
+
+## What ships today
 
 - **6 field types** — text, signature, initials, date, checkbox, dropdown
-- **AI field detection** — send page images to your AI proxy, auto-detect fields
-- **PDF-native coordinates** — fields stored in PDF points (72pt/inch), Y-flip handled transparently
-- **AcroForm export** — export PDF with real form fields via pdf-lib
+- **PDF-native coordinates** — fields stored in PDF points (72pt/inch), with Y-flip handled transparently
+- **AcroForm export** — export PDFs with real form fields via pdf-lib
 - **JSON schema export/import** — round-trip field definitions
-- **Undo/redo** — immer patch-based history (structural diffs, not snapshots)
-- **Keyboard shortcuts** — T/S/D/C to add fields, Ctrl+Z undo, Delete to remove
-- **Drag & resize** — interact.js with snap-to-grid and alignment guides
-- **Composable** — use the full editor or import individual pieces
-- **Error boundary** — built-in crash recovery
-- **Toast notifications** — built-in user feedback system
+- **Undo/redo** — immer patch-based history
+- **Keyboard shortcuts** — T/S/I/D/C/L to add fields, Ctrl+Z undo, Delete to remove
+- **Drag & resize** — interact.js with alignment guides
+- **Composable API** — use the full editor or import individual pieces
+- **Error boundary and toasts** — built-in recovery and feedback
+
+## Planned or optional
+
+- **AI-assisted detection** — the hooks exist, but you need your own server-side proxy to use it
+- **Headless fill SDK** — planned, not published yet
+
+## Recommended adoption path
+
+1. Start with `PdfFormEditor`
+2. Export a JSON schema or fillable PDF
+3. Move to the composable API only if you need a custom layout
+4. Add AI experimentation later, behind your own proxy, if it fits your product
+
+## Export programmatically
+
+```tsx
+import { useFormExport } from '@formpdf/editor'
+
+function SaveButton({ originalFile }) {
+  const { exportJSON, exportToPdf, downloadJson, downloadPdf } = useFormExport()
+
+  const schema = exportJSON()
+  const pdfBytes = await exportToPdf(originalFile)
+
+  return null
+}
+```
+
+## Schema import
+
+```tsx
+import { useSchemaImport } from '@formpdf/editor'
+
+function LoadButton() {
+  const { importSchema, importFile } = useSchemaImport()
+
+  const result = await importFile(jsonFile)
+  console.log(`Imported ${result.imported} fields`)
+
+  importSchema(schemaObject, { clearExisting: true })
+}
+```
 
 ## Props
 
-```typescript
+```ts
 interface PdfFormEditorProps {
-  pdfUrl?: string        // URL to load PDF from
-  pdfFile?: File         // File object (from input or drag-drop)
-  aiProxyUrl: string     // Your server-side AI proxy endpoint
-  onExport?: (schema) => void  // Called when JSON schema is exported
-  onSave?: (pdfBytes: Uint8Array) => void  // Called when PDF is exported
+  pdfUrl?: string
+  pdfFile?: File
+  aiProxyUrl?: string
+  onExport?: (schema) => void
+  onSave?: (pdfBytes: Uint8Array) => void
 }
 ```
+
+`aiProxyUrl` is optional. It is only relevant if you are wiring up AI-assisted detection yourself.
 
 ## Composable API
 
@@ -71,9 +114,9 @@ import {
 } from '@formpdf/editor'
 import '@formpdf/editor/styles.css'
 
-function CustomEditor() {
+function CustomEditor({ file, zoom }) {
   return (
-    <EditorProvider aiProxyUrl="/api/detect">
+    <EditorProvider>
       <YourToolbar />
       <PdfCanvas pdfFile={file} scale={zoom}>
         {(pageIdx) => <FieldLayer pageIdx={pageIdx} />}
@@ -84,65 +127,35 @@ function CustomEditor() {
 }
 ```
 
-## Headless Export
+## Coordinate system
 
-```typescript
-import { useFormExport } from '@formpdf/editor'
+Fields are stored in **PDF User Space** (bottom-left origin, points). `CoordEngine` handles the transforms:
 
-function SaveButton() {
-  const { exportJSON, exportToPdf, downloadJson, downloadPdf } = useFormExport()
-
-  // Get JSON schema
-  const schema = exportJSON()
-
-  // Get PDF with embedded AcroForm fields
-  const pdfBytes = await exportToPdf(originalFile)
-}
-```
-
-## Schema Import
-
-```typescript
-import { useSchemaImport } from '@formpdf/editor'
-
-function LoadButton() {
-  const { importSchema, importFile } = useSchemaImport()
-
-  // From file input
-  const result = await importFile(jsonFile)
-  console.log(`Imported ${result.imported} fields`)
-
-  // From object
-  importSchema(schemaObject, { clearExisting: true })
-}
-```
-
-## Coordinate System
-
-Fields are stored in **PDF User Space** (bottom-left origin, points). The `CoordEngine` handles all coordinate transforms:
-
-```
+```text
 PDF Points (bottom-left) → CoordEngine → Screen Pixels (top-left)
 screenY = (pageHeightPt - ptY - ptH) * scaleY
 ```
 
 This means:
-- Exported coordinates are always correct regardless of zoom level
-- AcroForm fields land exactly where they appear on screen
-- No drift between what you see and what exports
+- exported coordinates remain correct regardless of zoom level
+- AcroForm fields land where they appear on screen
+- there is no drift between edit mode and export
 
-## AI Proxy Contract
+## AI proxy contract
 
-The `aiProxyUrl` endpoint must handle two request shapes:
+If you choose to wire up `aiProxyUrl`, the endpoint must handle two request shapes.
 
-**Field Detection:**
+**Field detection**
+
 ```json
 POST { "imageBase64": "<jpeg>", "pageIndex": 0 }
 → { "fields": [{ "type": "text", "label": "Name", "x": 0.1, "y": 0.2, "w": 0.3, "h": 0.03, "required": true }] }
 ```
+
 Coordinates are 0-1 relative, top-left origin.
 
-**Chat:**
+**Chat**
+
 ```json
 POST { "message": "What fields does this form need?" }
 → { "reply": "Based on the document..." }
@@ -152,7 +165,7 @@ POST { "message": "What fields does this form need?" }
 
 The stylesheet must be imported separately:
 
-```typescript
+```ts
 import '@formpdf/editor/styles.css'
 ```
 
