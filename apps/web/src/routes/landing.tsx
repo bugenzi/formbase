@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { track } from '@vercel/analytics'
 import '../styles/landing.css'
 
 /* ── Single-pass syntax highlighter ── */
@@ -150,6 +151,22 @@ function TypeWriter({ words, className }: { words: string[]; className?: string 
   return <span className={className}>{text}<span className="lp-cursor" /></span>
 }
 
+function trackOpenEditor(location: string) {
+  track('open_editor_clicked', { location })
+}
+
+function trackGithubClick(location: string) {
+  track('github_clicked', { location })
+}
+
+function trackAnchorClick(target: string, location: string) {
+  track('anchor_clicked', { target, location })
+}
+
+function trackInstallCommandCopied() {
+  track('copy_install_command', { location: 'hero' })
+}
+
 function Nav() {
   const nav = useNavigate()
   const [scrolled, setScrolled] = useState(false)
@@ -168,11 +185,11 @@ function Nav() {
           <span className="lp-nav__logo-text">formbase</span>
         </a>
         <div className="lp-nav__links">
-          <a href="#how-it-works">How it works</a>
-          <a href="#features">Features</a>
-          <a href="https://github.com/bugenzi/formbase" target="_blank" rel="noopener noreferrer">GitHub</a>
+          <a href="#how-it-works" onClick={() => trackAnchorClick('how_it_works', 'nav')}>How it works</a>
+          <a href="#features" onClick={() => trackAnchorClick('features', 'nav')}>Features</a>
+          <a href="https://github.com/bugenzi/formbase" target="_blank" rel="noopener noreferrer" onClick={() => trackGithubClick('nav')}>GitHub</a>
         </div>
-        <button className="lp-nav__cta" onClick={() => nav('/editor')}>
+        <button className="lp-nav__cta" onClick={() => { trackOpenEditor('nav'); nav('/editor') }}>
           Open Editor
         </button>
       </div>
@@ -210,18 +227,21 @@ function Hero() {
         </p>
 
         <div className="lp-hero__actions">
-          <button className="lp-btn lp-btn--primary" onClick={() => nav('/editor')}>
+          <button className="lp-btn lp-btn--primary" onClick={() => { trackOpenEditor('hero_primary'); nav('/editor') }}>
             Try the Editor
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
           </button>
-          <a className="lp-btn lp-btn--glass" href="#how-it-works">See how it works</a>
+          <a className="lp-btn lp-btn--glass" href="#how-it-works" onClick={() => trackAnchorClick('how_it_works', 'hero_secondary')}>See how it works</a>
         </div>
 
         <div className="lp-hero__install">
           <code>npm install @formpdf/editor</code>
           <button
             className="lp-hero__copy"
-            onClick={() => navigator.clipboard.writeText('npm install @formpdf/editor')}
+            onClick={() => {
+              trackInstallCommandCopied()
+              navigator.clipboard.writeText('npm install @formpdf/editor')
+            }}
             title="Copy"
           >
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="5" width="8" height="8" rx="1.5"/><path d="M3 11V3a1.5 1.5 0 011.5-1.5H11"/></svg>
@@ -373,7 +393,7 @@ function EditorPreview() {
         </div>
       </S>
       <S delay={100}>
-        <button className="lp-btn lp-btn--primary lp-preview__cta" onClick={() => nav('/editor')}>
+        <button className="lp-btn lp-btn--primary lp-preview__cta" onClick={() => { trackOpenEditor('preview'); nav('/editor') }}>
           Open the real editor
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
         </button>
@@ -555,11 +575,11 @@ function Cta() {
           <h2>MIT Licensed. Free forever.</h2>
           <p>Use the editor locally, export schemas or PDFs, and adopt the package at your own pace.</p>
           <div className="lp-cta__actions">
-            <button className="lp-btn lp-btn--white" onClick={() => nav('/editor')}>
+            <button className="lp-btn lp-btn--white" onClick={() => { trackOpenEditor('cta'); nav('/editor') }}>
               Open Editor
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
             </button>
-            <a className="lp-btn lp-btn--outline" href="https://github.com/bugenzi/formbase" target="_blank" rel="noopener noreferrer">
+            <a className="lp-btn lp-btn--outline" href="https://github.com/bugenzi/formbase" target="_blank" rel="noopener noreferrer" onClick={() => trackGithubClick('cta')}>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
               Star on GitHub
             </a>
@@ -579,9 +599,9 @@ function Footer() {
           formbase
         </span>
         <div className="lp-footer__links">
-          <a href="#features">Features</a>
-          <a href="#api">API</a>
-          <a href="https://github.com/bugenzi/formbase" target="_blank" rel="noopener noreferrer">GitHub</a>
+          <a href="#features" onClick={() => trackAnchorClick('features', 'footer')}>Features</a>
+          <a href="#api" onClick={() => trackAnchorClick('api', 'footer')}>API</a>
+          <a href="https://github.com/bugenzi/formbase" target="_blank" rel="noopener noreferrer" onClick={() => trackGithubClick('footer')}>GitHub</a>
         </div>
         <span className="lp-footer__copy">MIT License &middot; {new Date().getFullYear()}</span>
       </div>
