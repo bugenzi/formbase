@@ -923,17 +923,168 @@
     --section-py: 80px;
   }
 
-  .lp-nav__links { display: none; }
-  .lp-hero { padding-top: 100px; min-height: auto; }
-  .lp-hero__actions { flex-direction: column; }
+  .lp-nav {
+    padding: 0 16px;
+  }
 
-  .lp-features__grid { grid-template-columns: 1fr; }
+  .lp-nav__inner {
+    gap: 12px;
+  }
 
-  .lp-flow__step { flex-direction: column; align-items: center; text-align: center; }
-  .lp-flow__connector { padding-left: 0; }
+  .lp-nav__links {
+    display: none;
+  }
 
-  .lp-cta__box { padding: 48px 24px; }
-  .lp-cta__actions { flex-direction: column; }
+  .lp-nav__cta {
+    margin-left: auto;
+    padding: 8px 14px;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
 
-  .lp-footer__inner { flex-direction: column; gap: 16px; text-align: center; }
+  .lp-hero {
+    min-height: auto;
+    padding: 100px 16px 64px;
+  }
+
+  .lp-hero__content {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .lp-hero__sub {
+    font-size: 16px;
+  }
+
+  .lp-hero__actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .lp-hero__actions .lp-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .lp-hero__install {
+    display: flex;
+    width: 100%;
+    max-width: 100%;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 12px;
+    overflow-x: auto;
+  }
+
+  .lp-hero__install code {
+    white-space: nowrap;
+  }
+
+  .lp-flow,
+  .lp-preview,
+  .lp-features,
+  .lp-code,
+  .lp-cta {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .lp-features__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lp-flow__step {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+    text-align: center;
+  }
+
+  .lp-flow__num {
+    margin: 0 auto;
+  }
+
+  .lp-flow__step-body {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .lp-flow__code {
+    width: 100%;
+    max-width: 100%;
+    padding: 14px;
+  }
+
+  .lp-flow__code pre {
+    font-size: 12px;
+  }
+
+  .lp-flow__connector {
+    width: 100%;
+    padding-left: 0;
+  }
+
+  .lp-preview__body {
+    min-height: auto;
+  }
+
+  .lp-preview__canvas {
+    padding: 16px;
+  }
+
+  .lp-preview__page {
+    padding: 20px 16px;
+  }
+
+  .lp-code__tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+  }
+
+  .lp-code__tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .lp-code__tab {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding: 10px 14px;
+  }
+
+  .lp-code__body {
+    padding: 16px;
+  }
+
+  .lp-code__body pre {
+    font-size: 12px;
+  }
+
+  .lp-cta__box {
+    padding: 48px 20px;
+  }
+
+  .lp-cta__actions {
+    flex-direction: column;
+  }
+
+  .lp-cta__actions .lp-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .lp-footer {
+    padding: 0 16px;
+  }
+
+  .lp-footer__inner {
+    flex-direction: column;
+    gap: 16px;
+    text-align: center;
+  }
+
+  .lp-footer__links {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
 }
