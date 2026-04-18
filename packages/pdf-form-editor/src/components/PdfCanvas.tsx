@@ -14,7 +14,7 @@ interface PdfCanvasProps {
   onPageCount?: (count: number) => void
   onPageWarning?: (pageIdx: number, message: string) => void
   onVisiblePageChange?: (pageIdx: number) => void
-  children?: (pageIdx: number) => React.ReactNode  // Render field overlay per page
+  children?: (pageIdx: number) => React.ReactNode
 }
 
 export function PdfCanvas({ pdfFile, scale, onPageCount, onPageWarning, onVisiblePageChange, children }: PdfCanvasProps) {
@@ -24,7 +24,6 @@ export function PdfCanvas({ pdfFile, scale, onPageCount, onPageWarning, onVisibl
   const renderTasksRef = useRef<Map<number, RenderTask>>(new Map())
   const renderedPagesRef = useRef<Set<number>>(new Set())
 
-  // Track page wrapper DOM elements for React portals
   const [pageWrappers, setPageWrappers] = useState<Map<number, HTMLDivElement>>(new Map())
 
   const renderPage = useCallback(async (pageIdx: number) => {
@@ -32,9 +31,8 @@ export function PdfCanvas({ pdfFile, scale, onPageCount, onPageWarning, onVisibl
     if (!pdfDoc) return
 
     const dpr = window.devicePixelRatio || 1
-    const page: PDFPageProxy = await pdfDoc.getPage(pageIdx + 1) // pdfjs is 1-indexed
+    const page: PDFPageProxy = await pdfDoc.getPage(pageIdx + 1)
 
-    // Warn if page is rotated (MVP only supports 0°)
     if (page.rotate !== 0) {
       onPageWarning?.(
         pageIdx,
@@ -53,12 +51,11 @@ export function PdfCanvas({ pdfFile, scale, onPageCount, onPageWarning, onVisibl
       wrapper.insertBefore(canvas, wrapper.firstChild)
     }
 
-    canvas.width  = viewport.width
+    canvas.width = viewport.width
     canvas.height = viewport.height
-    canvas.style.width  = viewport.width  / dpr + 'px'
+    canvas.style.width = viewport.width / dpr + 'px'
     canvas.style.height = viewport.height / dpr + 'px'
 
-    // Cancel any in-flight render for this page
     const existingTask = renderTasksRef.current.get(pageIdx)
     if (existingTask) {
       try { existingTask.cancel() } catch {}
@@ -71,7 +68,6 @@ export function PdfCanvas({ pdfFile, scale, onPageCount, onPageWarning, onVisibl
     try {
       await renderTask.promise
     } catch (e: unknown) {
-      // RenderingCancelledException is expected when a render is superseded
       if ((e as Error)?.name !== 'RenderingCancelledException') throw e
       return
     }
@@ -79,18 +75,16 @@ export function PdfCanvas({ pdfFile, scale, onPageCount, onPageWarning, onVisibl
     renderTasksRef.current.delete(pageIdx)
     renderedPagesRef.current.add(pageIdx)
 
-    // Update wrapper minHeight to match actual canvas size to prevent layout jump
     ;(wrapper as HTMLElement).style.minHeight = viewport.height / dpr + 'px'
 
-    // Register page with engine AFTER render (dimensions now known)
-    const cssW = viewport.width  / dpr
+    const cssW = viewport.width / dpr
     const cssH = viewport.height / dpr
     engine.registerPage(
       pageIdx,
-      cssW / scale,   // pdfWidthPt
-      cssH / scale,   // pdfHeightPt
-      cssW,           // canvasWidthPx (CSS pixels)
-      cssH,           // canvasHeightPx
+      cssW / scale,
+      cssH / scale,
+      cssW,
+      cssH,
       page.rotate,
     )
   }, [scale, engine, onPageWarning])
@@ -113,14 +107,29 @@ export function PdfCanvas({ pdfFile, scale, onPageCount, onPageWarning, onVisibl
     let cancelled = false
 
     async function load() {
-      const arrayBuffer = await pdfFile!.arrayBuffer()
-      const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
-      if (cancelled) { pdfDoc.destroy(); return }
+      const arrayBuffer = await pdfFile.arrayBuffer()
+
+      // Security hardening for untrusted PDFs:
+      // - use TypedArray input as recommended by PDF.js
+      // - keep XFA disabled unless we deliberately support it
+      // - stop at parse errors instead of attempting aggressive recovery
+      // - explicitly disable eval support as a defense-in-depth measure
+      const loadingTask = pdfjsLib.getDocument({
+        data: new Uint8Array(arrayBuffer),
+        enableXfa: false,
+        stopAtErrors: true,
+        isEvalSupported: false,
+      } as unknown as Parameters<typeof pdfjsLib.getDocument>[0])
+
+      const pdfDoc = await loadingTask.promise
+      if (cancelled) {
+        pdfDoc.destroy()
+        return
+      }
 
       pdfDocRef.current = pdfDoc
       onPageCount?.(pdfDoc.numPages)
 
-      // Build page wrapper divs before setting up IntersectionObserver
       const container = containerRef.current
       if (!container) return
       container.innerHTML = ''
@@ -130,17 +139,14 @@ export function PdfCanvas({ pdfFile, scale, onPageCount, onPageWarning, onVisibl
         const wrapper = document.createElement('div')
         wrapper.className = 'pdf-page-wrapper'
         wrapper.dataset.page = String(i)
-        // Placeholder height prevents layout jump before canvas renders
         wrapper.style.minHeight = '800px'
         wrapper.style.position = 'relative'
         container.appendChild(wrapper)
         wrappers.set(i, wrapper)
       }
 
-      // Trigger React re-render so portals can be created for field overlays
       setPageWrappers(wrappers)
 
-      // Render pages on demand as they enter the viewport
       const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
           const idx = parseInt((entry.target as HTMLElement).dataset.page!)
@@ -148,7 +154,6 @@ export function PdfCanvas({ pdfFile, scale, onPageCount, onPageWarning, onVisibl
             onVisiblePageChange?.(idx)
             if (!renderedPagesRef.current.has(idx)) renderPage(idx)
           } else {
-            // Keep adjacent pages in memory for smooth scroll
             const current = [...renderedPagesRef.current].sort()[0] ?? 0
             if (Math.abs(idx - current) > 1) destroyPage(idx)
           }
@@ -166,8 +171,6 @@ export function PdfCanvas({ pdfFile, scale, onPageCount, onPageWarning, onVisibl
 
   return (
     <div ref={containerRef} className="pdf-canvas-container">
-      {/* Page wrappers are created imperatively above.
-          React portals render field overlays into each wrapper. */}
       {children && Array.from(pageWrappers.entries()).map(([pageIdx, wrapperEl]) =>
         createPortal(children(pageIdx), wrapperEl, `page-overlay-${pageIdx}`)
       )}
