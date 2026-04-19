@@ -1,0 +1,45 @@
+name: Feature request
+description: Propose a focused improvement with a clear problem statement.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please describe the problem first and then the proposed solution.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - pdf-form-editor package
+        - web app
+        - CI/CD
+        - release workflow
+        - documentation
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: What user, maintainer, or contributor problem does this address?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Keep it concrete and scoped.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: textarea
+    id: impact
+    attributes:
+      label: Expected impact
+      description: Mention affected users, workflows, or packages.
