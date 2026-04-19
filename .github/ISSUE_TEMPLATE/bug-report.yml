@@ -1,0 +1,58 @@
+name: Bug report
+description: Report a reproducible bug in the editor package, web app, or release workflow.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Please keep reports focused and reproducible.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - pdf-form-editor package
+        - web app
+        - CI/CD
+        - release workflow
+        - documentation
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the bug clearly and concisely.
+      placeholder: A short summary of the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Provide exact steps, inputs, and files when possible.
+      placeholder: |
+        1. Go to ...
+        2. Upload ...
+        3. Click ...
+        4. See error ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include browser, OS, Node, package version, or workflow run link if relevant.
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional context
+      description: Screenshots, recordings, logs, or minimal repro links.
