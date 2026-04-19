@@ -1,0 +1,12 @@
+# Default owner
+* @bugenzi
+
+# Repo workflow and policy files
+/.github/ @bugenzi
+/CODEOWNERS @bugenzi
+/CONTRIBUTING.md @bugenzi
+/SECURITY.md @bugenzi
+
+# App and package ownership
+/apps/web/ @bugenzi
+/packages/pdf-form-editor/ @bugenzi
