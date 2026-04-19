@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildFormSchema, parseFormSchema, validateFormSchema } from './formSchema'
-import type { Field, TextOverlay } from '../store/types'
+import type { Field, FormSchema, TextOverlay } from '../store/types'
 import type { PageRegistration } from '../engine/CoordEngine'
 
 function createPageRegistration(overrides: Partial<PageRegistration> = {}): PageRegistration {
@@ -144,7 +144,7 @@ describe('formSchema', () => {
           positionRel: { x: 1 / 6, y: 0.72, w: 0.3, h: 0.03 },
         },
       ],
-    }
+    } satisfies FormSchema
 
     expect(validateFormSchema(legacySchema)).toBe(true)
 
