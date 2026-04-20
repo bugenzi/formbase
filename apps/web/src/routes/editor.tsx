@@ -1,5 +1,5 @@
-import { PdfFormEditor } from '@formpdf/editor'
-import '@formpdf/editor/styles.css'
+import { PdfFormEditor } from '@bugenzi/formpdf-editor'
+import '@bugenzi/formpdf-editor/styles.css'
 
 export default function EditorRoute() {
   return (

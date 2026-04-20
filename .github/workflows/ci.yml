@@ -102,13 +102,13 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build editor package
-        run: pnpm --filter @formpdf/editor build
+        run: pnpm --filter @bugenzi/formpdf-editor build
 
       - name: Run editor tests
-        run: pnpm --filter @formpdf/editor test
+        run: pnpm --filter @bugenzi/formpdf-editor test
 
       - name: Typecheck editor package
-        run: pnpm --filter @formpdf/editor typecheck
+        run: pnpm --filter @bugenzi/formpdf-editor typecheck
 
       - name: Verify editor dist output
         run: |
@@ -144,7 +144,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build editor package
-        run: pnpm --filter @formpdf/editor build
+        run: pnpm --filter @bugenzi/formpdf-editor build
 
       - name: Typecheck web app
         run: pnpm --filter @formpdf/web typecheck

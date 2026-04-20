@@ -22,12 +22,12 @@ Open `http://localhost:5173` to use the landing page and editor playground.
 ### 2. Embed the package in your React app
 
 ```bash
-npm install @formpdf/editor
+npm install @bugenzi/formpdf-editor
 ```
 
 ```tsx
-import { PdfFormEditor } from '@formpdf/editor'
-import '@formpdf/editor/styles.css'
+import { PdfFormEditor } from '@bugenzi/formpdf-editor'
+import '@bugenzi/formpdf-editor/styles.css'
 
 function App() {
   return (
@@ -58,7 +58,7 @@ function App() {
 ## Export programmatically
 
 ```tsx
-import { useFormExport } from '@formpdf/editor'
+import { useFormExport } from '@bugenzi/formpdf-editor'
 
 const { exportJSON, exportToPdf } = useFormExport()
 
@@ -73,7 +73,7 @@ const pdfBytes = await exportToPdf(originalFile)
 
 1. Open the playground and place a few fields on a sample PDF
 2. Export a JSON schema and a fillable PDF to understand the output
-3. Embed `@formpdf/editor` in your app when you are ready for a custom workflow
+3. Embed `@bugenzi/formpdf-editor` in your app when you are ready for a custom workflow
 4. Move to the composable API only when you need a custom layout
 
 ## Project structure
@@ -81,7 +81,7 @@ const pdfBytes = await exportToPdf(originalFile)
 ```text
 formbase/
 ├── packages/
-│   └── pdf-form-editor/     # @formpdf/editor — the npm package
+│   └── pdf-form-editor/     # @bugenzi/formpdf-editor — the npm package
 │       ├── src/
 │       │   ├── engine/       # CoordEngine (PDF <-> screen coordinate transforms)
 │       │   ├── store/        # Zustand + immer (fields, history, undo/redo)
@@ -112,10 +112,36 @@ This means fields survive zoom changes, export correctly, and don't drift.
 
 ```bash
 pnpm dev          # Start editor watcher + web dev server
-pnpm build        # Build @formpdf/editor and @formpdf/web
+pnpm build        # Build @bugenzi/formpdf-editor and @formpdf/web
 pnpm test         # Run tests
 pnpm typecheck    # TypeScript check everything
 ```
+
+## Publishing
+
+Bootstrap the npm package once from your local machine before enabling trusted publishing:
+
+```bash
+cd packages/pdf-form-editor
+npm publish --access public
+```
+
+That first publish requires either an npm account with 2FA enabled or a granular access token with bypass 2FA enabled.
+
+After the bootstrap publish succeeds, configure npm trusted publishing on the `@bugenzi/formpdf-editor` package page:
+
+1. Add a trusted publisher for GitHub Actions.
+2. Set GitHub user or org to `bugenzi`.
+3. Set repository to `formbase`.
+4. Set workflow filename to `release-package.yml`.
+
+Future releases stay explicit:
+
+1. Bump `packages/pdf-form-editor/package.json`.
+2. Merge to `main`.
+3. Create and push the matching tag `editor-vX.Y.Z`.
+
+After the first trusted-publishing release succeeds, remove any `NPM_TOKEN` GitHub secret and, if desired, set npm publishing access to require 2FA and disallow tokens.
 
 ## Tech
 

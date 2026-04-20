@@ -210,7 +210,7 @@ function Hero() {
       <S className="lp-hero__content">
         <div className="lp-hero__pill">
           <span className="lp-hero__pill-dot" />
-          Open Source &middot; MIT Licensed
+          Open source npm library &middot; MIT Licensed
         </div>
 
         <h1 className="lp-hero__title">
@@ -222,8 +222,8 @@ function Hero() {
         </h1>
 
         <p className="lp-hero__sub">
-          Start in the visual editor, then ship the same workflow in React.<br />
-          Export JSON schemas or fillable PDFs from the same package.
+          Install <code>@bugenzi/formpdf-editor</code>, start in the visual editor, then ship the same workflow in React.<br />
+          Export JSON schemas or fillable PDFs from one package.
         </p>
 
         <div className="lp-hero__actions">
@@ -235,12 +235,12 @@ function Hero() {
         </div>
 
         <div className="lp-hero__install">
-          <code>npm install @formpdf/editor</code>
+          <code>npm install @bugenzi/formpdf-editor</code>
           <button
             className="lp-hero__copy"
             onClick={() => {
               trackInstallCommandCopied()
-              navigator.clipboard.writeText('npm install @formpdf/editor')
+              navigator.clipboard.writeText('npm install @bugenzi/formpdf-editor')
             }}
             title="Copy"
           >
@@ -256,7 +256,7 @@ function HowItWorks() {
   return (
     <section className="lp-flow" id="how-it-works">
       <S><h2 className="lp-section-title">Start visually. Export programmatically.</h2></S>
-      <S delay={80}><p className="lp-section-sub">The open-source flow today is editor first, then schema or PDF export.</p></S>
+      <S delay={80}><p className="lp-section-sub">The open-source flow today starts with <code>@bugenzi/formpdf-editor</code>, then moves from editor to schema or PDF export.</p></S>
 
       <div className="lp-flow__steps">
         <S delay={0} className="lp-flow__step">
@@ -265,8 +265,8 @@ function HowItWorks() {
             <h3>Place fields with the visual editor</h3>
             <p>Open any PDF. Drag text, signature, date, checkbox, dropdown, or initials fields exactly where they belong. Keyboard shortcuts, undo/redo, alignment guides.</p>
             <div className="lp-flow__code">
-<SyntaxPre code={`import { PdfFormEditor } from '@formpdf/editor'
-import '@formpdf/editor/styles.css'
+<SyntaxPre code={`import { PdfFormEditor } from '@bugenzi/formpdf-editor'
+import '@bugenzi/formpdf-editor/styles.css'
 
 <PdfFormEditor
   pdfUrl="/contract.pdf"
@@ -286,7 +286,7 @@ import '@formpdf/editor/styles.css'
             <h3>Export JSON schema or filled PDFs</h3>
             <p>Use the same package to export field schemas as JSON or inject AcroForm fields into your PDF. That gives you a clear path from editor testing to app integration.</p>
             <div className="lp-flow__code">
-<SyntaxPre code={`import { useFormExport } from '@formpdf/editor'
+<SyntaxPre code={`import { useFormExport } from '@bugenzi/formpdf-editor'
 
 const { exportJSON, exportToPdf } = useFormExport()
 
@@ -446,7 +446,7 @@ function Features() {
   return (
     <section className="lp-features" id="features">
       <S><h2 className="lp-section-title">Built for developers</h2></S>
-      <S delay={80}><p className="lp-section-sub">What works today for the editor package, plus the roadmap areas we are still exploring.</p></S>
+      <S delay={80}><p className="lp-section-sub">What ships today in <code>@bugenzi/formpdf-editor</code>, plus the roadmap areas we are still exploring.</p></S>
       <div className="lp-features__grid">
         {FEATURES.map((f, i) => (
           <S key={f.title} delay={i * 60} className="lp-features__card">
@@ -465,7 +465,7 @@ function Features() {
 const TABS = [
   {
     label: 'Export Schema',
-    code: `import { useFormExport } from '@formpdf/editor'
+    code: `import { useFormExport } from '@bugenzi/formpdf-editor'
 
 function ExportButtons({ originalFile }) {
   const { exportJSON, downloadPdf } = useFormExport()
@@ -488,8 +488,8 @@ function ExportButtons({ originalFile }) {
   },
   {
     label: 'Full Editor',
-    code: `import { PdfFormEditor } from '@formpdf/editor'
-import '@formpdf/editor/styles.css'
+    code: `import { PdfFormEditor } from '@bugenzi/formpdf-editor'
+import '@bugenzi/formpdf-editor/styles.css'
 
 export default function App() {
   return (
@@ -504,7 +504,7 @@ export default function App() {
     label: 'Custom Layout',
     code: `import {
   EditorProvider, PdfCanvas, FieldLayer
-} from '@formpdf/editor'
+} from '@bugenzi/formpdf-editor'
 
 function CustomEditor({ file, zoom }) {
   return (
@@ -542,7 +542,7 @@ function CodeSection() {
   return (
     <section className="lp-code" id="api">
       <S><h2 className="lp-section-title">Use it your way</h2></S>
-      <S delay={80}><p className="lp-section-sub">Start with the full editor, export what you need, then compose your own layout when the defaults stop being enough.</p></S>
+      <S delay={80}><p className="lp-section-sub">Start with the full <code>@bugenzi/formpdf-editor</code> experience, export what you need, then compose your own layout when the defaults stop being enough.</p></S>
       <S delay={160}>
         <div className="lp-code__window">
           <div className="lp-code__tabs">
@@ -573,7 +573,7 @@ function Cta() {
         <div className="lp-cta__box">
           <div className="lp-cta__glow" aria-hidden="true" />
           <h2>MIT Licensed. Free forever.</h2>
-          <p>Use the editor locally, export schemas or PDFs, and adopt the package at your own pace.</p>
+          <p>Use <code>@bugenzi/formpdf-editor</code> locally, export schemas or PDFs, and adopt the library at your own pace.</p>
           <div className="lp-cta__actions">
             <button className="lp-btn lp-btn--white" onClick={() => { trackOpenEditor('cta'); nav('/editor') }}>
               Open Editor

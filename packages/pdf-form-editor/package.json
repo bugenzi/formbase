@@ -1,15 +1,18 @@
 {
-  "name": "@formpdf/editor",
+  "name": "@bugenzi/formpdf-editor",
   "version": "0.1.0",
   "description": "Embeddable PDF form field editor for React with JSON and AcroForm export",
   "type": "module",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/bugenzi/formbase",
+    "url": "https://github.com/bugenzi/formbase.git",
     "directory": "packages/pdf-form-editor"
   },
   "homepage": "https://github.com/bugenzi/formbase#readme",
+  "publishConfig": {
+    "access": "public"
+  },
   "keywords": [
     "pdf",
     "form",
