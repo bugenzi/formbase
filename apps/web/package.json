@@ -11,7 +11,7 @@
     "postinstall": "cp node_modules/pdfjs-dist/build/pdf.worker.min.mjs public/"
   },
   "dependencies": {
-    "@formpdf/editor": "workspace:*",
+    "@bugenzi/formpdf-editor": "workspace:*",
     "@vercel/analytics": "^2.0.1",
     "pdfjs-dist": "^4.10.38",
     "react": "^18.3.0",

@@ -1,4 +1,4 @@
-// Public API surface of @formpdf/editor
+// Public API surface of @bugenzi/formpdf-editor
 export { PdfFormEditor } from './components/PdfFormEditor'
 export { PdfCanvas } from './components/PdfCanvas'
 export { FieldLayer } from './components/FieldLayer'

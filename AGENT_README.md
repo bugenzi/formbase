@@ -6,7 +6,7 @@ This file is for AI agents working on the codebase. Read this before making chan
 
 Two packages in a pnpm monorepo:
 
-1. **`packages/pdf-form-editor`** — `@formpdf/editor` npm package. The core product.
+1. **`packages/pdf-form-editor`** — `@bugenzi/formpdf-editor` npm package. The core product.
 2. **`apps/web`** — Vite + React app. Landing page and editor playground.
 
 That's it. No server, no database, no auth. Those were removed intentionally. See `.claude/business-plan.md` for the roadmap.
@@ -48,9 +48,9 @@ That's it. No server, no database, no auth. Those were removed intentionally. Se
 
 ```bash
 export PATH="$HOME/.nvm/versions/node/v22.22.0/bin:$PATH"
-pnpm --filter @formpdf/editor build
-pnpm --filter @formpdf/editor test
-pnpm --filter @formpdf/editor typecheck
+pnpm --filter @bugenzi/formpdf-editor build
+pnpm --filter @bugenzi/formpdf-editor test
+pnpm --filter @bugenzi/formpdf-editor typecheck
 pnpm --filter @formpdf/web typecheck
 ```
 

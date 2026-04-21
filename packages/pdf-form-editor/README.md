@@ -1,20 +1,20 @@
-# @formpdf/editor
+# @bugenzi/formpdf-editor
 
 Embeddable PDF form editor for React. Place fields on any PDF, export JSON schemas or AcroForm-ready PDFs, and keep coordinates in PDF-native space.
 
 ## Install
 
 ```bash
-npm install @formpdf/editor
+npm install @bugenzi/formpdf-editor
 # or
-pnpm add @formpdf/editor
+pnpm add @bugenzi/formpdf-editor
 ```
 
 ## Quick start
 
 ```tsx
-import { PdfFormEditor } from '@formpdf/editor'
-import '@formpdf/editor/styles.css'
+import { PdfFormEditor } from '@bugenzi/formpdf-editor'
+import '@bugenzi/formpdf-editor/styles.css'
 
 function App() {
   return (
@@ -55,7 +55,7 @@ That is the zero-config path. You do **not** need an AI proxy to use the editor,
 ## Export programmatically
 
 ```tsx
-import { useFormExport } from '@formpdf/editor'
+import { useFormExport } from '@bugenzi/formpdf-editor'
 
 function SaveButton({ originalFile }) {
   const { exportJSON, exportToPdf, downloadJson, downloadPdf } = useFormExport()
@@ -70,7 +70,7 @@ function SaveButton({ originalFile }) {
 ## Schema import
 
 ```tsx
-import { useSchemaImport } from '@formpdf/editor'
+import { useSchemaImport } from '@bugenzi/formpdf-editor'
 
 function LoadButton() {
   const { importSchema, importFile } = useSchemaImport()
@@ -111,8 +111,8 @@ import {
   useFieldStore,
   useFormExport,
   useSchemaImport,
-} from '@formpdf/editor'
-import '@formpdf/editor/styles.css'
+} from '@bugenzi/formpdf-editor'
+import '@bugenzi/formpdf-editor/styles.css'
 
 function CustomEditor({ file, zoom }) {
   return (
@@ -166,7 +166,7 @@ POST { "message": "What fields does this form need?" }
 The stylesheet must be imported separately:
 
 ```ts
-import '@formpdf/editor/styles.css'
+import '@bugenzi/formpdf-editor/styles.css'
 ```
 
 Uses CSS variables for theming. All classes are prefixed with `pfe-` or `form-field`.

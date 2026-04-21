@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "pnpm --filter @formpdf/editor build && pnpm --filter @formpdf/web build",
+  "buildCommand": "pnpm --filter @bugenzi/formpdf-editor build && pnpm --filter @formpdf/web build",
   "outputDirectory": "apps/web/dist",
   "installCommand": "pnpm install",
   "framework": null,

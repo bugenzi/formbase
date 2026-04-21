@@ -1,9 +1,11 @@
-# Update these in GitHub before using this workflow:
-# Secrets
-#   NPM_TOKEN=replace-me-with-your-registry-token
-# Variables
-#   PACKAGE_REGISTRY_URL=https://registry.npmjs.org
-#   PACKAGE_PUBLISH_ACCESS=public
+# One-time bootstrap publish happens locally:
+#   cd packages/pdf-form-editor
+#   npm publish --access public
+#
+# After the package exists on npm, configure trusted publishing on npmjs.com:
+#   GitHub user/org: bugenzi
+#   Repository: formbase
+#   Workflow filename: release-package.yml
 
 name: Release Package
 
@@ -18,7 +20,8 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write
+  contents: read
+  id-token: write
 
 jobs:
   publish-package:
@@ -40,21 +43,24 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: 22.14.0
           cache: pnpm
-          registry-url: ${{ vars.PACKAGE_REGISTRY_URL || 'https://registry.npmjs.org' }}
+          registry-url: https://registry.npmjs.org
+
+      - name: Upgrade npm for trusted publishing
+        run: npm install -g npm@^11.10.0
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Build editor package
-        run: pnpm --filter @formpdf/editor build
+        run: pnpm --filter @bugenzi/formpdf-editor build
 
       - name: Run editor tests
-        run: pnpm --filter @formpdf/editor test
+        run: pnpm --filter @bugenzi/formpdf-editor test
 
       - name: Typecheck editor package
-        run: pnpm --filter @formpdf/editor typecheck
+        run: pnpm --filter @bugenzi/formpdf-editor typecheck
 
       - name: Resolve release metadata
         id: release
@@ -85,21 +91,6 @@ jobs:
           echo "should_publish=$SHOULD_PUBLISH" >> "$GITHUB_OUTPUT"
           echo "reason=$REASON" >> "$GITHUB_OUTPUT"
 
-      - name: Validate release configuration
-        if: steps.release.outputs.should_publish == 'true'
-        env:
-          PACKAGE_REGISTRY_URL_VALUE: ${{ vars.PACKAGE_REGISTRY_URL || 'https://registry.npmjs.org' }}
-          PACKAGE_PUBLISH_ACCESS_VALUE: ${{ vars.PACKAGE_PUBLISH_ACCESS || 'public' }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          echo "Release registry URL: $PACKAGE_REGISTRY_URL_VALUE"
-          echo "Release publish access: $PACKAGE_PUBLISH_ACCESS_VALUE"
-          if [ -z "$NODE_AUTH_TOKEN" ]; then
-            echo "Missing GitHub secret NPM_TOKEN."
-            echo "Example: NPM_TOKEN=replace-me-with-your-registry-token"
-            exit 1
-          fi
-
       - name: Print release decision
         run: |
           echo "Package: ${{ steps.release.outputs.package_name }}"
@@ -112,27 +103,4 @@ jobs:
       - name: Publish package
         if: steps.release.outputs.should_publish == 'true'
         working-directory: packages/pdf-form-editor
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          PACKAGE_PUBLISH_ACCESS: ${{ vars.PACKAGE_PUBLISH_ACCESS }}
-        run: |
-          if [ -n "$PACKAGE_PUBLISH_ACCESS" ]; then
-            pnpm publish --no-git-checks --access "$PACKAGE_PUBLISH_ACCESS"
-          else
-            pnpm publish --no-git-checks --access public
-          fi
-
-      - name: Create package tag
-        if: steps.release.outputs.should_publish == 'true' && github.event_name == 'workflow_dispatch'
-        env:
-          RELEASE_TAG: editor-v${{ steps.release.outputs.current_version }}
-        run: |
-          if git rev-parse "$RELEASE_TAG" >/dev/null 2>&1; then
-            echo "Tag $RELEASE_TAG already exists. Skipping tag creation."
-            exit 0
-          fi
-
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a "$RELEASE_TAG" -m "Release @formpdf/editor v${{ steps.release.outputs.current_version }}"
-          git push origin "$RELEASE_TAG"
+        run: npm publish --access public
