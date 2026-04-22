@@ -6,3 +6,7 @@ dist/
 .DS_Store
 .env
 apps/web/public/pdf.worker.min.mjs
+.claude/
+CLAUDE.MD
+AGENT_README.md
+AGENTS.md
