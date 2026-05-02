@@ -68,7 +68,7 @@
     "interactjs": "^1.10.27",
     "nanoid": "^5.1.7",
     "pdf-lib": "^1.17.1",
-    "pdfjs-dist": "^4.10.38",
+    "pdfjs-dist": "^5.7.284",
     "pdfmake": "^0.3.7",
     "zustand": "^5.0.0"
   },
